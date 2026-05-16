@@ -1,0 +1,3450 @@
+
+
+===== PAGE 1 =====
+R unna  
+ Project  Proposal  
+Wanikkasit  Nopthiraitthikun  652115043  Thanachai   Naksomboon   662115020   Bachelor  of  Science  
+Software
+ 
+Engineering
+ 
+Program
+   College  of  Arts,  Media,  and  Technology  
+Chiang
+ 
+Mai
+ 
+University
+ March  2026  
+  
+Project  Advisor  
+Assistant  Professor  Dr.  Noppon  Choosri
+
+===== PAGE 2 =====
+Document  History   Document Name 
+History Status Date Editable Reviewer 
+Documents  Proposal_  v0.1.0  
+-  Create  Chapter  1  -  4  C  18-3-2026  TN,  WN  -  
+Proposal_  v0.0.1  
+-  Chapter  1  -  2  U  20-3-2026  TN,  WN  -  
+Proposal_  v0.0.2  
+-  Chapter  2-4  U  21-3-2026  TN,  WN   
+Proposal_  v1.0.0  
+-  Chapter  1  -  4  U  24-3-2026  TN,  WN   
+ *WN  =  Wanikkasit  Nopthiraitthikun  Status:  *TN  =  Peter  Parker  C  =  Create  *NC  =  Asst.  Prof.  Dr.  Noppon  Choosri  R  =  Reviewed  by  advisor  U  =  Update  Version:  D  =  Delete  document  name_v X.Y.Z  
+X
+:
+ 
+External
+ 
+published
+ 
+Y
+:
+ 
+Test
+ 
+approval
+ Z :  Internal  review  
+ Document  Name  
+Runna_Project.pdf   
+Owner  WN,  TN  Page  2  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 3 =====
+TABLE  OF  CONTENTS   Chapter  One  |  Introduction  and  Rationale  4  1.1  Motivation 4  1.2  Purpose  6  1.3  Target  users  8  1.4  Project  Scope  8  Chapter  Two  |  Literature  Review  10  2.1  Business  Review  /  Software  Review  10  2.2  Tool  and  Technology  Review  15  Chapter  Three  |  Project  Plan  20  3.1  Product  Perspective  20  3.2  Objectives  24  3.3  Type  of  System  Users  and  the  Users’  Characteristics  25  3.4  Acronyms  and  Definitions  27 3.5  System  Architecture  29  3.6  Product  Features  30  3.7  Limits  35  3.8  Milestones  39  3.9  Deliverable  Items 44  Chapter  Four  |  Reference  46   
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  3  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 4 =====
+Chapter  One  |  Introduction  and  Rationale  1.1  Motivation  
+Running  is  one  of  the  most  accessible  and  widely  adopted  forms  of  physical  activity,  requiring  
+minimal
+ 
+equipment
+ 
+while
+ 
+providing
+ 
+significant
+ 
+benefits
+ 
+to
+ 
+both
+ 
+physical
+ 
+and
+ 
+mental
+ 
+health.
+ 
+With
+ 
+the
+ 
+rapid
+ 
+advancement
+ 
+of
+ 
+mobile
+ 
+technology,
+ 
+modern
+ 
+running
+ 
+applications
+ 
+have
+ 
+evolved
+ 
+to
+ 
+include
+ 
+features
+ 
+such
+ 
+as
+ 
+GPS
+ 
+tracking,
+ 
+pace
+ 
+analysis,
+ 
+and
+ 
+performance
+ 
+statistics.
+ 
+However,
+ 
+despite
+ 
+these
+ 
+improvements,
+ 
+existing
+ 
+solutions
+ 
+remain
+ 
+largely
+ 
+performance-centric
+ 
+and
+ 
+fail
+ 
+to
+ 
+address
+ 
+several
+ 
+critical
+ 
+gaps
+ 
+in
+ 
+user
+ 
+experience,
+ 
+safety,
+ 
+and
+ 
+social
+ 
+interaction.
+ 
+First,  current  applications  lack  proactive  safety  intelligence.  While  runners,  especially  those  who  
+run
+ 
+alone
+ 
+or
+ 
+in
+ 
+unfamiliar
+ 
+environments
+ 
+face
+ 
+risks
+ 
+such
+ 
+as
+ 
+falls,
+ 
+collisions,
+ 
+or
+ 
+sudden
+ 
+health
+ 
+incidents,
+ 
+most
+ 
+existing
+ 
+platforms
+ 
+provide
+ 
+only
+ 
+passive
+ 
+safety
+ 
+features,
+ 
+such
+ 
+as
+ 
+manual
+ 
+location
+ 
+sharing.
+ 
+There
+ 
+is
+ 
+little
+ 
+to
+ 
+no
+ 
+real-time
+ 
+analysis
+ 
+of
+ 
+motion
+ 
+data
+ 
+to
+ 
+detect
+ 
+abnormal
+ 
+events
+ 
+and
+ 
+trigger
+ 
+automated
+ 
+emergency
+ 
+responses.
+ 
+This
+ 
+limitation
+ 
+exposes
+ 
+users
+ 
+to
+ 
+significant
+ 
+risk
+ 
+and
+ 
+reduces
+ 
+trust
+ 
+in
+ 
+the
+ 
+system
+ 
+during
+ 
+critical
+ 
+situations.
+ 
+Second,  route  planning  remains  inefficient  and  non-intuitive.  Most  applications  require  users  to  
+manually
+ 
+select
+ 
+routes
+ 
+or
+ 
+rely
+ 
+on
+ 
+static,
+ 
+predefined
+ 
+paths.
+ 
+These
+ 
+approaches
+ 
+do
+ 
+not
+ 
+adapt
+ 
+to
+ 
+user
+ 
+preferences
+ 
+such
+ 
+as
+ 
+desired
+ 
+distance,
+ 
+environmental
+ 
+conditions
+ 
+(e.g.,
+ 
+parks,
+ 
+low
+ 
+traffic
+ 
+areas),
+ 
+or
+ 
+route
+ 
+structure
+ 
+(e.g.,
+ 
+loop
+ 
+vs.
+ 
+out-and-back).
+ 
+As
+ 
+a
+ 
+result,
+ 
+users
+ 
+must
+ 
+invest
+ 
+additional
+ 
+time
+ 
+and
+ 
+effort
+ 
+in
+ 
+planning,
+ 
+which
+ 
+negatively
+ 
+impacts
+ 
+usability
+ 
+and
+ 
+discourages
+ 
+consistent
+ 
+engagement.
+ 
+Third,  social  interaction  in  existing  running  platforms  is  limited  and  often  indirect.  While  some  
+applications
+ 
+include
+ 
+community
+ 
+features,
+ 
+they
+ 
+are
+ 
+typically
+ 
+asynchronous
+ 
+(e.g.,
+ 
+activity
+ 
+sharing,
+ 
+comments,
+ 
+likes)
+ 
+and
+ 
+do
+ 
+not
+ 
+effectively
+ 
+support
+ 
+users
+ 
+in
+ 
+finding
+ 
+running
+ 
+partners
+ 
+in
+ 
+a
+ 
+simple
+ 
+and
+ 
+practical
+ 
+way.
+ 
+Moreover,
+ 
+real-time
+ 
+matching
+ 
+systems,
+ 
+while
+ 
+powerful,
+ 
+introduce
+ 
+complexity,
+ 
+privacy
+ 
+concerns,
+ 
+and
+ 
+scalability
+ 
+challenges.
+ 
+To  address  these  limitations,  Runna  is  proposed  as  an  intelligent  and  user-centric  running  assistant  
+platform.
+ 
+     
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  4  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 5 =====
+1.1  AI-Driven  Route  Generation  
+ 
+Runna
+ 
+leverages
+ 
+natural
+ 
+language
+ 
+processing
+ 
+to
+ 
+allow
+ 
+users
+ 
+to
+ 
+describe
+ 
+their
+ 
+desired
+ 
+running
+ 
+route
+ 
+in
+ 
+a
+ 
+simple
+ 
+and
+ 
+intuitive
+ 
+manner
+ 
+(e.g.,
+ 
+“5
+ 
+km
+ 
+park
+ 
+route
+ 
+with
+ 
+low
+ 
+traffic”).
+ 
+The
+ 
+system
+ 
+interprets
+ 
+this
+ 
+input
+ 
+and
+ 
+generates
+ 
+optimized
+ 
+routes
+ 
+using
+ 
+map-based
+ 
+algorithms
+ 
+and
+ 
+external
+ 
+geospatial
+ 
+services.
+ 
+This
+ 
+significantly
+ 
+reduces
+ 
+user
+ 
+effort
+ 
+while
+ 
+improving
+ 
+personalization
+ 
+and
+ 
+usability.
+ 2.1  Simplified  Social  Discovery  via  Feed  and  Chat  
+ 
+Instead
+ 
+of
+ 
+complex
+ 
+real-time
+ 
+matching,
+ 
+Runna
+ 
+introduces
+ 
+a
+ 
+lightweight
+ 
+and
+ 
+scalable
+ 
+social
+ 
+interaction
+ 
+model
+ 
+through
+ 
+a
+ 
+post-based
+ 
+feed
+ 
+and
+ 
+private
+ 
+chat
+ 
+system.
+ 
+Users
+ 
+can
+ 
+create
+ 
+posts
+ 
+tagged
+ 
+with
+ 
+a
+ 
+specific
+ 
+province,
+ 
+search
+ 
+for
+ 
+relevant
+ 
+content,
+ 
+and
+ 
+communicate
+ 
+directly
+ 
+with
+ 
+others.
+ 
+This
+ 
+approach
+ 
+balances
+ 
+usability,
+ 
+privacy,
+ 
+and
+ 
+scalability,
+ 
+enabling
+ 
+users
+ 
+to
+ 
+find
+ 
+running
+ 
+partners
+ 
+organically
+ 
+without
+ 
+exposing
+ 
+sensitive
+ 
+real-time
+ 
+location
+ 
+data.
+ 3.1  Real-Time  Accident  Detection  using  Sensor  Fusion  
+ 
+Runna
+ 
+incorporates
+ 
+advanced
+ 
+sensor-based
+ 
+monitoring
+ 
+by
+ 
+analyzing
+ 
+data
+ 
+from
+ 
+the
+ 
+accelerometer,
+ 
+gyroscope,
+ 
+and
+ 
+GPS.
+ 
+Through
+ 
+multi-condition
+ 
+validation
+ 
+and
+ 
+pattern
+ 
+recognition,
+ 
+the
+ 
+system
+ 
+can
+ 
+detect
+ 
+abnormal
+ 
+events
+ 
+such
+ 
+as
+ 
+falls
+ 
+or
+ 
+collisions
+ 
+and
+ 
+automatically
+ 
+trigger
+ 
+emergency
+ 
+alerts.
+ 
+This
+ 
+feature
+ 
+enhances
+ 
+user
+ 
+safety
+ 
+and
+ 
+represents
+ 
+a
+ 
+key
+ 
+differentiator
+ 
+from
+ 
+existing
+ 
+applications.
+ 
+By  integrating  these  components,  Runna  moves  beyond  traditional  fitness  tracking  and  positions  
+itself
+ 
+as
+ 
+a
+ 
+context-aware,
+ 
+safety-focused,
+ 
+and
+ 
+socially
+ 
+connected
+ 
+running
+ 
+ecosystem.
+ 
+The
+ 
+system
+ 
+not
+ 
+only
+ 
+improves
+ 
+the
+ 
+efficiency
+ 
+and
+ 
+personalization
+ 
+of
+ 
+route
+ 
+planning
+ 
+but
+ 
+also
+ 
+enhances
+ 
+user
+ 
+confidence
+ 
+through
+ 
+proactive
+ 
+safety
+ 
+mechanisms
+ 
+and
+ 
+meaningful
+ 
+social
+ 
+interaction.
+ 
+Ultimately,  Runna  aims  to  redefine  the  running  experience  by  combining  intelligence,  safety,  and  
+community
+ 
+into
+ 
+a
+ 
+single
+ 
+cohesive
+ 
+platform,
+ 
+addressing
+ 
+real-world
+ 
+problems
+ 
+that
+ 
+are
+ 
+currently
+ 
+overlooked
+ 
+by
+ 
+existing
+ 
+solutions.
+ 
+          
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  5  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 6 =====
+1.2  Purpose  
+The  purpose  of  Runna  is  to  develop  an  intelligent  mobile  application  that  enhances  the  running  
+experience
+ 
+through
+ 
+the
+ 
+integration
+ 
+of
+ 
+artificial
+ 
+intelligence,
+ 
+safety
+ 
+monitoring,
+ 
+and
+ 
+social
+ 
+interaction
+ 
+within
+ 
+a
+ 
+unified
+ 
+platform.
+ 
+The  system  is  designed  around  three  core  components:  
+1.  AI-Based  Route  Generation  
+Runna  enables  users  to  generate  personalized  running  routes  through  natural  language  input,  
+allowing
+ 
+them
+ 
+to
+ 
+describe
+ 
+their
+ 
+requirements
+ 
+in
+ 
+a
+ 
+simple
+ 
+and
+ 
+intuitive
+ 
+way
+ 
+(e.g.,
+ 
+“5
+ 
+km
+ 
+park
+ 
+route
+ 
+with
+ 
+low
+ 
+traffic”).
+ 
+The  system  transforms  this  input  into  structured  parameters,  including:  
+●  Target  distance  ●  Route  type  (loop  /  out-and-back)  ●  Environmental  preferences  (park,  urban,  low  traffic)  
+These  parameters  are  processed  using:  
+●  Natural  Language  Processing  (NLP)  ●  Map-based  graph  traversal  algorithms  ●  Heuristic  optimization  techniques  
+The  system  then  generates  and  evaluates  multiple  route  candidates  and  selects  the  optimal  route  
+based
+ 
+on
+ 
+criteria
+ 
+such
+ 
+as
+ 
+distance
+ 
+accuracy,
+ 
+safety,
+ 
+and
+ 
+usability.
+ 
+           
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  6  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 7 =====
+2.  Social  Feed  and  Chat  System  
+Instead  of  complex  real-time  matching,  Runna  provides  a  simplified  and  scalable  social  interaction  
+model
+ 
+through
+ 
+a
+ 
+post-based
+ 
+feed
+ 
+and
+ 
+private
+ 
+messaging
+ 
+system.
+ 
+Users  can:  
+●  Create  posts  to  find  running  partners  ●  Tag  posts  with  a  specific  province  ●  Search  posts  using  keywords  ●  Filter  content  based  on  location  (province)  ●  Communicate  via  private  chat  
+This  approach:  
+●  Reduces  system  complexity  ●  Enhances  user  privacy  (no  real-time  location  sharing)  ●  Enables  organic  and  flexible  social  interaction  
+3.  Real-Time  Accident  Detection  
+Runna  integrates  a  sensor-based  safety  monitoring  system  that  continuously  analyzes  motion  data  
+from
+ 
+smartphone
+ 
+sensors,
+ 
+including:
+ 
+●  Accelerometer  ●  Gyroscope  ●  GPS  
+The  system  applies  sensor  fusion  techniques  and  multi-condition  validation  to  detect  abnormal  
+patterns
+ 
+such
+ 
+as:
+ 
+●  High-impact  collisions  ●  Falls  with  inactivity  ●  Sudden  abnormal  velocity  changes  
+When  an  anomaly  is  detected,  the  system:  
+●  Triggers  an  alert  ●  Initiates  a  countdown  mechanism  ●  Sends  emergency  notifications  with  location  data  if  no  response  is  received   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  7  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 8 =====
+1.3  Target  users  
+Independent  runners  who  require  safety  assurance  during  solo  activities  
+Beginner  runners  who  need  guidance  in  route  planning  and  user-friendly  tools  
+Social  runners  who  want  to  find  running  partners  through  simple  and  flexible  interaction  
+Safety-focused  users  who  prioritize  emergency  detection  and  monitoring  during  outdoor  activities  
+ 
+1.4  Project  Scope  
+The  Runna  project  focuses  on  the  development  of  three  primary  subsystems:  
+1.  AI  Route  Generation  Engine  
+●  Natural  language  processing  for  user  input  interpretation  ●  Route  generation  using  map  APIs  ●  Optimization  based  on  distance,  safety,  and  environment  
+2.  Social  Feed  &  Chat  System  
+●  Post  creation  and  management  ●  Province-based  tagging  and  filtering  ●  Keyword-based  search  functionality  ●  Private  messaging  system  between  users  
+3.  Sensor-Based  Accident  Detection  System  
+●  Real-time  sensor  data  collection  ●  Motion  analysis  using  sensor  fusion  ●  Event  detection  and  classification  ●  Emergency  alert  and  notification  system  
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  8  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 9 =====
+System  Components  
+●  Mobile  Application  (Flutter)  
+ 
+Provides
+ 
+user
+ 
+interface
+ 
+for
+ 
+route
+ 
+generation,
+ 
+social
+ 
+interaction,
+ 
+and
+ 
+activity
+ 
+tracking
+ ●  Backend  API  (FastAPI)  
+ 
+Handles
+ 
+business
+ 
+logic,
+ 
+AI
+ 
+processing,
+ 
+authentication,
+ 
+and
+ 
+communication
+ 
+between
+ 
+services
+ ●  Sensor  Processing  Module  
+ 
+Processes
+ 
+real-time
+ 
+data
+ 
+from
+ 
+mobile
+ 
+sensors
+ 
+for
+ 
+accident
+ 
+detection
+ ●  Route  Optimization  Module  
+ 
+Generates
+ 
+and
+ 
+evaluates
+ 
+running
+ 
+routes
+ 
+using
+ 
+algorithms
+ 
+and
+ 
+map
+ 
+data
+ ●  Social  Module  (Feed  &  Chat)  
+ 
+Manages
+ 
+posts,
+ 
+search,
+ 
+filtering,
+ 
+and
+ 
+messaging
+ ●  Database  (PostgreSQL)  
+ 
+Stores
+ 
+user
+ 
+data,
+ 
+posts,
+ 
+messages,
+ 
+routes,
+ 
+and
+ 
+system
+ 
+logs
+ ●  External  APIs  ○  Maps  API  (route  generation  and  visualization)  ○  AI  API  (natural  language  processing)  ○  Notification  services  (emergency  alerts)  
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  9  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 10 =====
+Chapter  Two  |  Literature  Review  2.1  Business  Review  /  Software  Review  
+2.1.1  Strava  
+ 
+Strengths:  
+●  Strong  community  ecosystem  with  features  such  as  clubs,  leaderboards,  and  activity  sharing,  
+which
+ 
+promotes
+ 
+long-term
+ 
+user
+ 
+engagement
+ ●  Advanced  performance  analytics  including  pace,  elevation,  heart  rate  integration,  and  
+segment-based
+ 
+competition
+ ●  High  scalability  and  global  user  adoption,  making  it  a  dominant  platform  in  the  running  
+community
+ 
+Limitations:  
+●  Lack  of  real-time  safety  intelligence;  the  platform  does  not  actively  monitor  user  conditions  
+or
+ 
+detect
+ 
+accidents
+ ●  Route  planning  is  relatively  static  and  relies  on  predefined  routes  or  manual  creation,  with  
+limited
+ 
+personalization
+ ●  Social  interaction  is  primarily  asynchronous  (likes,  comments,  posts),  lacking  direct  
+mechanisms
+ 
+for
+ 
+finding
+ 
+running
+ 
+partners
+ 
+in
+ 
+real
+ 
+time
+ 
+or
+ 
+context-aware
+ 
+situations
+ 
+ 
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  10  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 11 =====
+2.1.2  Nike  Run  Club  
+ 
+Strengths:  
+●  Well-designed  structured  training  programs  tailored  for  different  skill  levels  (beginner  to  
+advanced)
+ ●  High-quality  coaching  content,  including  guided  runs  and  audio  feedback  from  professional  
+trainers
+ ●  Strong  brand  integration  with  Nike,  enhancing  user  trust  and  adoption  
+Limitations:  
+●  No  implementation  of  sensor-based  accident  detection  or  real-time  safety  monitoring  ●  Route  generation  is  limited;  users  cannot  dynamically  generate  routes  based  on  preferences  
+such
+ 
+as
+ 
+environment
+ 
+or
+ 
+safety
+ ●  Social  features  are  minimal  and  mostly  content-driven,  lacking  interactive  mechanisms  for  
+real-time
+ 
+or
+ 
+location-based
+ 
+user
+ 
+connection
+ 
+ 
+ 
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  11  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 12 =====
+2.1.3  Adidas  Running  
+ 
+Strengths:  
+●  Clean  and  intuitive  user  interface,  making  it  accessible  for  beginner  users  ●  Reliable  tracking  features  for  distance,  time,  and  pace  with  clear  visualization  ●  Integration  with  the  Adidas  ecosystem  
+Limitations:  
+●  Limited  intelligent  automation;  most  features  rely  on  manual  input  and  user  control  ●  No  emergency  response  system  or  proactive  safety  monitoring  ●  Social  features  are  basic,  with  limited  support  for  meaningful  user  interaction  or  partner  
+discovery
+ 
+ 
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  12  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 13 =====
+Comparative  Table   
+ Aspect  
+ Strava  
+Nike  Run  Club  
+Adidas  Running  
+Runna   
+Tracking  
+Advanced  GPS  tracking  with  detailed  performance  metrics  (pace,  elevation,  splits)  
+Accurate  tracking  with  coaching  integration  
+Standard  tracking  with  clear  visualization  
+Real-time  tracking  integrated  with  sensor-based  safety  monitoring  and  anomaly  detection  
+Social  
+Strong  community  (followers,  clubs,  sharing)  but  asynchronous  
+Limited  social  interaction,  mostly  content-based  
+Basic  social  sharing  with  minimal  interaction  features  
+Post-based  social  feed  with  province  tagging,  keyword  search,  and  private  chat  for  direct  user  interaction  
+Safety  Feature  
+No  active  safety  monitoring;  relies  on  manual  sharing  
+No  real-time  safety  or  emergency  detection  
+No  safety  intelligence  features  
+AI-driven  accident  detection  using  sensor  fusion  (accelerometer  +  gyroscope  +  GPS)  with  automatic  emergency  alerts  
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  13  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 14 =====
+Community  Features  
+Segments,  routes,  and  user-generated  content  
+No  map-based  social  interaction  
+Limited  route  sharing  
+Location-aware  social  feed  (province-based)  enabling  users  to  discover  nearby  running  posts  and  interact  safely     
+ Ai  Route  Generation  
+Manual  route  planning  or  predefined  routes  
+Manual  route  planning  or  predefined  routes  
+Manual  route  creation  
+Natural  language  →  AI  →  optimized  route  generation  using  constraints  (distance,  safety,  environment)  
+Innovation  Focus  
+Performance  analytics  and  competitive  community  
+Training  experience  and  coaching  quality  
+Simplicity  and  accessibility  
+Integrated  intelligent  system  combining  AI  route  generation,  real-time  safety  detection,  and  social  interaction  (novel  combination)  
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  14  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 15 =====
+2.2  Tool  and  Technology  Review   2.1.1  Development  Tool  Review   
+  2.1.1.1  Visual  Studio  Code  
+Visual  Studio  Code  was  selected  as  the  primary  development  environment  due  to  its  lightweight  
+architecture,
+ 
+extensibility,
+ 
+and
+ 
+strong
+ 
+support
+ 
+for
+ 
+modern
+ 
+development
+ 
+workflows,
+ 
+particularly
+ 
+in
+ 
+Flutter
+ 
+and
+ 
+backend
+ 
+API
+ 
+development.
+ 
+Key  Capabilities:  
+●  Integrated  debugging  for  Dart,  Python,  and  REST  APIs  ●  Rich  extension  ecosystem  (Flutter,  Docker,  REST  Client)  ●  Git  integration  for  version  control  ●  Fast  startup  and  low  resource  consumption  
+  Aspect  Visual  Studio  Code  Android  Studio  IntelliJ  IDEA  
+Ease  of  Use  Lightweight,  fast  setup  Complex,  heavy  IDE  
+Moderate  complexity  
+Performance  Fast,  low  memory  Heavy  resource  usage  
+Medium  
+Extensibility  High  (extensions  marketplace)  
+Limited  flexibility  High  (JetBrains  plugins)  
+Best  Use  Case  
+Cross-platform  dev  Native  Android  dev  Enterprise  backend          Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  15  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 16 =====
+2.1.1.2  GitHub  
+ 
+GitHub  is  used  for  version  control,  collaboration,  and  CI/CD  integration.  
+Advanced  usage:  
+●  GitHub  Actions  for  automated  testing  &  deployment  ●  Branching  strategy  (Git  Flow)  ●  Code  review  via  Pull  Requests  
+  2.1.2  Technology  Review     2.1.2.1  Flutter  
+Flutter  is  selected  as  the  core  frontend  framework  for  building  cross-platform  mobile  applications.  
+Technical  Strengths:  
+●  Single  codebase  for  Android  &  iOS  ●  High-performance  rendering  using  Skia  engine  ●  Reactive  UI  model  (Widget  tree)  ●  Hot  Reload  →  rapid  development  cycle  
+Why  suitable  for  Runna:  
+●  Real-time  UI  updates  (tracking  +  safety  alerts)  ●  Smooth  map  rendering  integration  ●  Efficient  for  startup-scale  projects  
+   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  16  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 17 =====
+Aspect  Flutter  React  Native  
+Jetpack  Compose  
+SwiftUI  
+Performance  Near-native  
+Medium  Native  Native  
+Cross-platform  
+Yes  Yes  No  No  
+UI  Flexibility  
+High  Medium  High  High  
+Learning  Curve  
+Easy  (Dart)  
+Easy  (JS)  Medium  Medium  
+  2.1.2.2  FastAPI  
+FastAPI  is  used  as  the  backend  framework  due  to  its  high  performance  and  native  support  for  
+asynchronous
+ 
+programming.
+ 
+Advanced  Capabilities:  
+●  Async/await  →  high  concurrency  ●  Automatic  OpenAPI  documentation  ●  Data  validation  via  Pydantic  ●  High  performance  (comparable  to  Node.js  /  Go)  
+Role  in  Runna:  
+●  Handle  AI  requests  (route  generation)  ●  Process  sensor  data  ●  Manage  real-time  APIs  
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  17  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 18 =====
+2.2.2.3  PostgreSQL  
+ 
+PostgreSQL  is  used  as  the  primary  database  system.  
+Why  PostgreSQL  (expert  reasoning):  
+●  Strong  support  for  geospatial  data  via  PostGIS  ●  ACID  compliance  (data  reliability)  ●  Advanced  indexing  (for  performance)  
+Use  in  Runna:  
+●  Store  user  data  ●  Store  routes  &  history  ●  Query  nearby  users  (location-based  matching)  
+2.2.2.4  Google  Maps  Platform  api  
+ 
+Google  Maps  Platform  is  used  for  geospatial  services  and  route  generation.  
+Components  used:  
+●  Maps  SDK  →  display  maps  ●  Routes  API  →  generate  navigation  paths  ●  Places  API  →  identify  locations  
+Advanced  Use  Case  (Runna):  
+●  Generate  multiple  candidate  routes  ●  Evaluate  route  safety  (traffic  /  environment)  ●  Integrate  with  AI  output   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  18  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 19 =====
+2.2.2.5  Gemini  API  
+ 
+Gemini  is  used  for  Natural  Language  Processing  (NLP)  to  interpret  user  input  and  convert  it  into  
+structured
+ 
+route
+ 
+constraints.
+ 
+Core  Functionality:  
+●  Convert  text  →  parameters  (e.g.,  “5km  park  low  traffic  loop”)  ●  Extract:  ○  Distance  ○  Route  type  ○  Environment  preference  
+Why  Gemini:  
+●  Strong  contextual  understanding  ●  Native  integration  with  Google  ecosystem  ●  Supports  future  AI  expansion  
+2.2.2.6  Sensor  Technology  (Mobile  Sensors)  
+Runna  relies  heavily  on  smartphone  sensors:  
+Sensors  Used:  
+●  Accelerometer  →  detect  force  (G-force)  ●  Gyroscope  →  detect  rotation  ●  GPS  →  detect  movement  &  speed  
+Processing:  
+●  Sensor  fusion  (combine  multiple  signals)  ●  Noise  filtering  (Kalman  filter  /  smoothing)  ●  Pattern  recognition  for  anomaly  detection  
+Why  important:  
+ 
+This
+ 
+enables
+ 
+real-time
+ 
+accident
+ 
+detection,
+ 
+which
+ 
+is
+ 
+a
+ 
+key
+ 
+innovation
+ 
+differentiating
+ 
+Runna
+ 
+from
+ 
+competitors.
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  19  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 20 =====
+Chapter  Three  |  Project  Plan  
+3.1  Product  Perspective  
+Runna  is  designed  as  an  intelligent  mobile-based  running  assistant  system  that  integrates  artificial  
+intelligence,
+ 
+real-time
+ 
+sensor
+ 
+processing,
+ 
+and
+ 
+simplified
+ 
+social
+ 
+interaction
+ 
+into
+ 
+a
+ 
+unified
+ 
+platform.
+ 
+Unlike
+ 
+traditional
+ 
+fitness
+ 
+applications
+ 
+that
+ 
+primarily
+ 
+focus
+ 
+on
+ 
+performance
+ 
+tracking,
+ 
+Runna
+ 
+emphasizes
+ 
+situational
+ 
+awareness,
+ 
+adaptive
+ 
+route
+ 
+generation,
+ 
+user
+ 
+safety,
+ 
+and
+ 
+practical
+ 
+social
+ 
+connectivity.
+ 
+The  system  follows  a  client-server  architecture ,  where:  
+●  The  mobile  application  (Flutter)  serves  as  the  primary  user  interface  ●  Backend  services  (FastAPI)  handle  business  logic,  AI  processing,  and  system  coordination  
+Runna  is  structured  into  three  tightly  integrated  subsystems:  
+1.  AI  Route  Generation  Subsystem  
+This  subsystem  enables  users  to  generate  personalized  running  routes  using  natural  language  input.  
+The  system:  
+●  Interprets  user  input  using  AI  (NLP)  ●  Converts  input  into  structured  constraints  such  as:  ○  Distance  ○  Route  type  (loop  /  out-and-back)  ○  Environment  (park,  urban,  low  traffic)  
+The  subsystem  then:  
+●  Interacts  with  external  map  services  ●  Generates  multiple  candidate  routes  using  road  network  data  ●  Applies  optimization  algorithms  and  heuristic  scoring  
+ 
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  20  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 21 =====
+Evaluation  criteria  include:  
+●  Distance  accuracy  ●  Safety  (traffic  conditions,  road  type)  ●  Environmental  quality  ●  Route  usability  (simplicity,  turns)  
+Finally,  the  system  selects  and  returns  the  optimal  route  to  the  user.  
+2.  Social  Feed  &  Chat  Subsystem  
+This  subsystem  provides  a  lightweight  and  scalable  social  interaction  model  through  a  post-based  
+feed
+ 
+and
+ 
+private
+ 
+messaging
+ 
+system.
+ 
+Instead  of  complex  real-time  matching,  the  system  allows  users  to:  
+●  Create  posts  to  find  running  partners  ●  Tag  posts  with  a  specific  province  ●  Search  posts  using  keywords  ●  Filter  posts  based  on  location  (province)  ●  Communicate  via  private  chat  
+The  subsystem  performs:  
+●  Post  storage  and  retrieval  ●  Keyword-based  search  and  filtering  ●  Province-based  indexing  for  efficient  querying  ●  Chat  session  management  and  message  storage  
+This  approach:  
+●  Reduces  system  complexity  ●  Improves  scalability  ●  Enhances  user  privacy  (no  real-time  location  sharing)  ●  Supports  flexible  and  user-driven  interaction  
+ 
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  21  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 22 =====
+3.  Sensor-Based  Accident  Detection  Subsystem  
+This  subsystem  continuously  monitors  motion  data  using  smartphone  sensors  and  applies  sensor  
+fusion
+ 
+techniques
+ 
+to
+ 
+detect
+ 
+abnormal
+ 
+events.
+ 
+Sensors  used:  
+●  Accelerometer  (force  detection)  ●  Gyroscope  (rotation  detection)  ●  GPS  (speed  and  location)  
+The  system  performs:  
+●  Real-time  data  sampling  ●  Noise  filtering  and  smoothing  ●  Pattern  recognition  for  anomaly  detection  ●  Event  classification  (fall,  collision,  abnormal  velocity)  
+Detection  logic  includes:  
+●  High-impact  detection  ●  Combined  motion  +  inactivity  detection  ●  Abnormal  speed  patterns  
+When  an  incident  is  detected:  
+●  The  system  triggers  an  alert  ●  A  countdown  mechanism  is  initiated  ●  Emergency  notifications  are  sent  if  no  user  response  is  received  
+ 
+ 
+ 
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  22  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 23 =====
+System  Environment  
+Runna  operates  within  a  mobile  ecosystem  and  depends  on:  
+●  Internet  connectivity  for:  ○  AI  processing  ○  Social  feed  and  chat  ○  Route  generation  ●  External  APIs  for:  ○  Map  services  (route  generation  and  visualization)  ○  AI  processing  (natural  language  understanding)  ○  Notification  delivery  ●  Smartphone  hardware  for:  ○  Sensor  data  collection  (accelerometer,  gyroscope,  GPS)  
+ 
+System  Characteristics  
+●  Real-time  processing  system  ●  Event-driven  architecture  ●  Scalable  backend  services  ●  Modular  subsystem  design  ●  Privacy-aware  social  interaction  model  
+             
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  23  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 24 =====
+3.2  Objectives  
+1.  Develop  an  AI-Based  Route  Generation  System  
+●  To  interpret  user  intent  using  natural  language  processing  ●  To  generate  optimized  running  routes  based  on  user  preferences  ●  To  incorporate  safety  and  environmental  constraints  
+2.  Implement  Real-Time  Accident  Detection  
+●  To  analyze  motion  data  using  sensor  fusion  ●  To  accurately  detect  abnormal  events  such  as  falls  and  collisions  ●  To  minimize  false  positives  using  multi-condition  validation  
+3.  Enable  Social  Interaction  via  Feed  and  Chat  
+●  To  allow  users  to  create  posts  and  discover  running  partners  ●  To  support  keyword-based  search  and  province-based  filtering  ●  To  enable  direct  communication  through  private  chat  ●  To  provide  a  simple,  scalable,  and  privacy-aware  social  system  
+4.  Ensure  Reliable  Emergency  Notification  System  
+●  To  automatically  trigger  alerts  during  critical  events  ●  To  notify  emergency  contacts  with  accurate  location  data  ●  To  provide  user  override  through  a  countdown  mechanism  
+5.  Provide  Scalable  and  Maintainable  System  Architecture  
+●  To  design  modular  backend  services  ●  To  ensure  system  scalability  for  multiple  concurrent  users  ●  To  support  future  feature  expansion   
+ .  
+   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  24  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 25 =====
+3.3  Type  of  System  Users  and  the  Users’  Characteristics  
+1.  Member  (Primary  User)  
+Members  are  registered  users  who  actively  use  the  application.  
+Characteristics:  
+●  Individuals  with  varying  levels  of  running  experience  ●  Use  mobile  devices  during  outdoor  activities  ●  Require  both  convenience  and  safety  assurance  
+Capabilities:  
+●  Generate  AI-based  routes  ●  Create  and  browse  posts  in  the  social  feed  ●  Search  posts  and  filter  by  province  ●  Communicate  with  other  users  via  chat  ●  Participate  in  running  activities  with  real-time  tracking  ●  Receive  safety  alerts  and  emergency  notifications  ●  View  historical  activity  data  
+Behavioral  Traits:  
+●  Prefer  automation  and  ease  of  use  ●  Value  safety  and  real-time  feedback  ●  Engage  in  social  interaction  to  find  running  partners  
+2.  Guest  (Unregistered  User)  
+Guests  are  users  who  access  the  application  without  full  registration.  
+Characteristics:  
+●  New  or  exploratory  users  ●  Limited  engagement  with  system  features  
+ 
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  25  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 26 =====
+Capabilities:  
+●  Browse  basic  application  interface  ●  View  general  feature  descriptions  
+Limitations:  
+●  Cannot  generate  AI  routes  ●  Cannot  create  posts  or  use  chat  ●  Cannot  store  or  access  personal  data  
+3.  System  Administrator  (Admin)  
+Administrators  manage  and  maintain  the  system.  
+Characteristics:  
+●  Technical  personnel  with  system-level  access  ●  Responsible  for  monitoring  and  system  control  
+Capabilities:  
+●  Manage  user  accounts  and  permissions  ●  Monitor  posts  and  chat  activity  (moderation)  ●  Monitor  system  logs  and  performance  ●  Configure  system  parameters  (e.g.,  detection  thresholds)  ●  Handle  reports  and  system  issues  
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  26  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 27 =====
+3.4  Acronyms  and  Definitions   
+Acronyms  Definitions  
+AI  The  simulation  of  human  intelligence  in  computer  systems.  In  Runna,  AI  is  used  for  natural  language  understanding  and  intelligent  route  generation.  
+NLP  A  subfield  of  AI  that  enables  the  system  to  understand  and  process  human  language  input  (e.g.,  “5  km  park  low  traffic”).  
+API  A  set  of  protocols  and  tools  that  allow  communication  between  the  mobile  application  (Flutter)  and  backend  services  (FastAPI),  as  well  as  external  services  such  as  Maps  and  AI  APIs.  
+REST  API  A  web-based  API  architecture  that  uses  HTTP  methods  (GET,  POST,  PUT,  DELETE)  for  communication  between  client  and  server.  
+RBAC  Role-Based  Access  Control  mechanism  that  defines  user  permissions  based  on  roles  (Guest,  Member,  Admin).  
+Flutter  A  cross-platform  UI  framework  used  to  develop  the  Runna  mobile  application  for  Android  and  iOS.  
+FastAPI  A  high-performance  backend  framework  used  to  build  RESTful  APIs  and  handle  system  logic,  AI  processing,  and  data  communication.  
+PostgreSQL  A  relational  database  management  system  used  to  store  structured  data  such  as  users,  posts,  routes,  and  activity  logs.  
+Google  Maps  API  A  suite  of  APIs  used  for  map  visualization,  route  generation,  and  geolocation  services  in  Runna.  
+Gemini  API  An  AI  service  used  to  process  natural  language  input  and  convert  it  into  structured  parameters  for  route  generation.   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  27  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 28 =====
+Sensor  Fusion  The  process  of  combining  data  from  multiple  sensors  (accelerometer,  gyroscope,  GPS)  to  improve  accuracy  in  detecting  motion  and  events.  
+Accelerometer  A  sensor  that  measures  acceleration  forces  (G-force),  used  in  Runna  to  detect  impacts  and  sudden  movements.  
+Gyroscope  A  sensor  that  measures  rotational  movement,  used  to  detect  falls  or  abnormal  orientation  changes.  
+GPS  A  satellite-based  system  used  to  determine  user  location,  speed,  and  movement  during  running  sessions.  
+G-Force   A  measurement  of  acceleration  force  used  in  accident  detection  to  identify  high-impact  events.  
+Route  Optimization  The  process  of  generating  the  most  suitable  running  route  based  on  constraints  such  as  distance,  safety,  and  environment.  
+Polyline  A  series  of  connected  geographic  coordinates  used  to  represent  a  route  on  a  map.  
+Social  Feed  A  feature  that  allows  users  to  create,  view,  and  search  posts  related  to  running  activities.  
+Real-Time  Processing  The  ability  of  the  system  to  process  and  respond  to  data  instantly,  especially  for  tracking  and  accident  detection.  
+Event-Driven  Architecture  
+A  system  design  approach  where  actions  are  triggered  by  events  such  as  user  input  or  sensor  data  changes.  
+Emergency  Alert  System  A  safety  feature  that  automatically  sends  alerts  and  location  data  to  predefined  contacts  when  an  accident  is  detected.  
+CI/CD  A  development  practice  that  automates  testing  and  deployment  processes  to  ensure  system  reliability  and  fast  updates.  
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  28  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 29 =====
+3.5  System  Architecture    
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  29  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 30 =====
+3.6  Product  Features  
+Feature  1:  Authentication  &  Roles  
+Description:  Guests  can  register;  Guests/Members/Admin  can  log  in  and  log  out  with  secure  
+role-based
+ 
+access.
+ 
+Actor:  Guest  /  Member  /  Admin  
+Details  
+ 
+Guest
+ 
+registers
+ 
+with
+ 
+first
+ 
+name,
+ 
+last
+ 
+name,
+ 
+username,
+ 
+e-mail,
+ 
+and
+ 
+password,
+ 
+then
+ 
+selects
+ 
+Member
+ 
+role.
+ 
+ 
+Guest/Member/Admin
+ 
+logs
+ 
+in
+ 
+with
+ 
+username
+ 
+and
+ 
+password.
+ 
+ 
+The
+ 
+system
+ 
+validates
+ 
+unique
+ 
+usernames
+ 
+and
+ 
+emails
+ 
+and
+ 
+stores
+ 
+passwords
+ 
+with
+ 
+encryption
+ 
+(hashed).
+ 
+ 
+The
+ 
+system
+ 
+generates
+ 
+a
+ 
+secure
+ 
+session/token
+ 
+after
+ 
+successful
+ 
+login.
+ 
+ 
+Members/Admin
+ 
+can
+ 
+log
+ 
+out
+ 
+anytime;
+ 
+the
+ 
+system
+ 
+destroys
+ 
+the
+ 
+session/token.
+ 
+ 
+Members
+ 
+can
+ 
+request
+ 
+a
+ 
+password
+ 
+reset
+ 
+link
+ 
+by
+ 
+entering
+ 
+their
+ 
+registered
+ 
+email
+ 
+address.
+ 
+ 
+The
+ 
+system
+ 
+enforces
+ 
+role-based
+ 
+access
+ 
+control
+ 
+(Member:
+ 
+normal
+ 
+features,
+ 
+Admin:
+ 
+system
+ 
+management).
+ 
+ 
+Feature  2:  AI  Route  Generation  
+Description:  Allows  members  to  generate  personalized  running  routes  using  natural  language  input  
+or
+ 
+manual
+ 
+map
+ 
+interaction.
+ 
+The
+ 
+system
+ 
+uses
+ 
+Gemini
+ 
+for
+ 
+natural
+ 
+language
+ 
+understanding
+ 
+and
+ 
+Google
+ 
+Maps
+ 
+Platform
+ 
+for
+ 
+route
+ 
+generation,
+ 
+combined
+ 
+with
+ 
+an
+ 
+internal
+ 
+optimization
+ 
+engine.
+ 
+Actor:  Member  
+Details  
+Actor  1  actions  (Member):  
+●  Member  selects  the  route  generation  feature.  ●  Member  inputs  a  request  (e.g.,  “5  km  park  low  traffic  route”).  ●  Member  can  optionally:  ○  Draw  route  manually  on  the  map  ○  Adjust  preferences  (distance,  route  type,  environment)  ●  Member  submits  the  request  for  route  generation.  
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  30  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 31 =====
+System  actions:  
+●  The  system  receives  user  input  and  sends  it  to  Gemini  for  processing.  ●  The  system  extracts  structured  parameters  such  as:  ○  Distance  (e.g.,  5  km)  ○  Route  type  (loop  /  out-and-back)  ○  Environment  (park  /  urban  /  mixed)  ○  Traffic  preference  (low  /  medium  /  high)  ●  The  system  validates  and  normalizes  the  extracted  parameters.  ●  The  system  calls  Google  Maps  Platform  (Routes  API  /  Places  API)  to  generate  multiple  candidate  
+routes.
+ ●  The  system  applies  route  generation  techniques:  ○  Waypoint  selection  ○  Loop  construction  ○  Road  network  traversal  ●  The  system  evaluates  each  candidate  route  using  optimization  logic  based  on:  ○  Distance  accuracy  (target  vs  actual  distance)  ○  Safety  factors  (traffic  level,  road  type)  ○  Environmental  quality  (green  areas,  park  coverage)  ○  Usability  (route  simplicity,  number  of  turns)  ●  The  system  assigns  a  score  to  each  route  and  selects  the  optimal  route.  ●  The  system  formats  the  selected  route  into  map-ready  data  (polyline,  metadata).  
+Output:  
+●  The  system  displays  the  generated  route  on  the  map  interface.  ●  The  system  shows  route  details:  ○  Total  distance  ○  Estimated  running  time  ○  Route  type  and  safety  level  ●  Members  can:  ○  Start  running  (begin  tracking  session)  ○  Save  the  route  for  future  use  ○  Regenerate  a  new  route  with  updated  preferences  
+ 
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  31  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 32 =====
+Feature  3:   Feature  3:  Social  Feed  &  Chat  
+Description:  
+ 
+Allows
+ 
+members
+ 
+to
+ 
+create
+ 
+posts,
+ 
+search
+ 
+content,
+ 
+and
+ 
+communicate
+ 
+with
+ 
+other
+ 
+users
+ 
+through
+ 
+chat.
+ 
+The
+ 
+system
+ 
+supports
+ 
+location-based
+ 
+filtering
+ 
+by
+ 
+province
+ 
+to
+ 
+enable
+ 
+users
+ 
+to
+ 
+find
+ 
+nearby
+ 
+running
+ 
+partners
+ 
+in
+ 
+a
+ 
+simple
+ 
+and
+ 
+privacy-aware
+ 
+way.
+ 
+Actor:  Member  
+Details  
+Actor  1  actions  (Member):  
+●  Member  creates  a  post:  ○  Enter  post  content  (e.g.,  “Looking  for  running  partner  5  km  evening”)  ○  Select  related  province  before  posting  ●  Member  can:  ○  View  posts  from  other  users  ○  Search  posts  by  keyword  (e.g.,  “5  km”,  “morning  run”)  ○  Filter  posts  by  province  ●  Member  selects  a  post  and  can:  ○  View  post  details  ○  Send  message  to  the  post  owner  ●  Member  can  chat  with  other  users  in  private  chat  
+System  actions:  
+●  The  system  stores  posts  in  the  database  with:  ○  Content  ○  User  ID  ○  Province  ○  Timestamp  ●  The  system  enables  search  functionality:  ○  Keyword-based  search  (title/content)  ○  Province-based  filtering  ●  The  system  retrieves  and  displays  posts  sorted  by:  ○  Latest  posts  (default)  ●  The  system  manages  chat  functionality:  ○  Create  chat  room  between  two  users  ○  Store  messages  in  database  ○  Retrieve  message  history   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  32  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 33 =====
+●  The  system  ensures  basic  privacy:  ○  Only  logged-in  users  can  post  and  chat  ○  Users  control  whom  they  interact  with  
+Output:  
+●  Members  can  view  a  feed  of  posts  filtered  by  province  ●  Members  can  search  and  find  relevant  running  posts  ●  Members  can  start  conversations  via  chat  ●  Members  can  use  posts  +  chat  to  find  running  partners  manually  
+ 
+Feature  4:  Accident  Detection  &  Emergency  Alert  
+Description:  Detects  abnormal  motion  patterns  using  sensor  data  and  automatically  triggers  
+emergency
+ 
+alerts.
+ 
+ 
+Actor:
+ 
+Member
+ 
+Details  
+Actor  1  actions  (Member):  
+ 
+Members
+ 
+start
+ 
+a
+ 
+running
+ 
+session.
+ 
+ 
+The
+ 
+system
+ 
+continuously
+ 
+collects
+ 
+sensor
+ 
+data
+ 
+(accelerometer,
+ 
+gyroscope,
+ 
+GPS).
+ 
+System  actions:  
+ 
+The
+ 
+system
+ 
+analyzes
+ 
+motion
+ 
+patterns
+ 
+using
+ 
+sensor
+ 
+fusion.
+ 
+Detection  conditions:  
+●  High  Impact:  G-Force  >  6G  and  speed  =  0  →  immediate  alert  ●  Moderate  Impact  +  Fall:  G-Force  >  3G  +  rotation  +  inactivity  →  alert  ●  High  Velocity:  abnormal  speed  spike  →  possible  collision  →  alert  
+Output:  
+ 
+The
+ 
+system
+ 
+triggers
+ 
+an
+ 
+alarm
+ 
+and
+ 
+20-second
+ 
+countdown.
+ 
+ 
+If
+ 
+there
+ 
+is
+ 
+no
+ 
+response,
+ 
+the
+ 
+system
+ 
+sends
+ 
+location
+ 
+and
+ 
+alert
+ 
+notification
+ 
+to
+ 
+emergency
+ 
+contacts.
+ 
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  33  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 34 =====
+Feature  5:  Admin  Dashboard  
+Description:  Allows  administrators  to  monitor  system  activity,  user  data,  and  safety  events  through  
+a
+ 
+centralized
+ 
+dashboard.
+ 
+ 
+Actor:
+ 
+Admin
+ 
+Details  
+Actor  1  actions  (Admin):  
+   
+ 
+Admin
+ 
+logs
+ 
+in
+ 
+to
+ 
+the
+ 
+system.
+ 
+    
+Admin
+ 
+accesses
+ 
+the
+ 
+Admin
+ 
+Dashboard.
+ 
+System  actions:  
+ 
+The
+ 
+system
+ 
+displays:
+ 
+●  Total  users  and  active  sessions  ●  Running  activity  statistics  ●  Route  generation  usage  ●  Accident  detection  logs  and  alerts  ●  User  reports  and  system  issues  
+Output:  
+ 
+Admin
+ 
+can
+ 
+monitor
+ 
+system
+ 
+performance.
+ 
+ 
+Admin
+ 
+can
+ 
+review
+ 
+abnormal
+ 
+events
+ 
+and
+ 
+manage
+ 
+user
+ 
+data.
+ 
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  34  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 35 =====
+3.7  Limits  
+The  Runna  system  operates  under  several  technical,  operational,  and  environmental  constraints  that  
+may
+ 
+affect
+ 
+system
+ 
+performance,
+ 
+reliability,
+ 
+scalability,
+ 
+and
+ 
+user
+ 
+experience.
+ 
+These
+ 
+limitations
+ 
+are
+ 
+important
+ 
+considerations
+ 
+in
+ 
+both
+ 
+system
+ 
+design
+ 
+and
+ 
+real-world
+ 
+deployment.
+ 
+1.  Internet  Dependency  
+Runna  relies  heavily  on  continuous  internet  connectivity  for  several  core  functionalities,  including:  
+●  AI-based  route  generation  (Gemini  processing)  ●  Map  services  and  route  visualization  (Google  Maps  Platform)  ●  Social  feed  synchronization  and  chat  communication  ●  Emergency  notification  delivery  
+In  conditions  with  unstable  or  limited  network  connectivity:  
+●  Route  generation  may  be  delayed  or  unavailable  ●  Social  feed  and  chat  may  not  update  in  real  time  ●  Emergency  alerts  may  be  delayed  
+This  dependency  may  reduce  system  effectiveness  in  remote  or  low-signal  environments.  
+ 
+2.  Sensor  Accuracy  and  Device  Variability  
+The  accident  detection  subsystem  depends  on  smartphone  sensors,  including:  
+●  Accelerometer  ●  Gyroscope  ●  GPS  
+However,  sensor  performance  varies  significantly  across  devices  due  to:  
+●  Different  hardware  quality  ●  Sampling  rates  and  sensor  precision  ●  Calibration  differences   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  35  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 36 =====
+This  variability  may  lead  to  inconsistent  motion  detection,  affecting  the  reliability  of  accident  
+detection
+ 
+across
+ 
+different
+ 
+users
+ 
+and
+ 
+devices.
+ 
+ 
+3.  False  Positives  and  False  Negatives  in  Detection  
+Despite  implementing  multi-condition  validation  and  sensor  fusion  techniques,  the  system  cannot  
+guarantee
+ 
+perfect
+ 
+accuracy.
+ 
+Potential  issues  include:  
+●  False  Positives:  ○  Phone  drops  or  abrupt  non-dangerous  movements  may  be  incorrectly  classified  as  
+accidents
+ ●  False  Negatives:  ○  Certain  real  accidents  may  not  match  predefined  detection  patterns  
+Environmental  conditions  such  as  uneven  terrain,  sudden  stops,  or  irregular  movement  patterns  may  
+further
+ 
+impact
+ 
+detection
+ 
+accuracy.
+ 
+ 
+4.  Battery  Consumption  
+Runna  performs  continuous  background  operations,  including:  
+●  GPS  tracking  ●  Sensor  data  collection  and  processing  ●  Real-time  communication  (chat,  feed  updates)  
+These  processes  can  significantly  increase  battery  consumption,  especially  during  long  running  
+sessions.
+ 
+ 
+This
+ 
+may
+ 
+limit
+ 
+usability
+ 
+for
+ 
+users
+ 
+with
+ 
+lower
+ 
+battery
+ 
+capacity
+ 
+or
+ 
+extended
+ 
+outdoor
+ 
+activities.
+ 
+ 
+5.  External  API  Dependency  
+The  system  depends  on  third-party  services,  including:   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  36  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 37 =====
+●  Google  Maps  Platform  (routing,  geolocation)  ●  Gemini  API  (natural  language  processing)  ●  Notification  services  
+Potential  risks  include:  
+●  API  downtime  or  service  disruption  ●  Request  latency  affecting  real-time  performance  ●  Usage  quotas  or  billing  limitations  
+Any  failure  in  these  services  may  directly  impact  route  generation,  map  accuracy,  and  system  
+responsiveness.
+ 
+ 
+6.  Social  Feed  and  Chat  Constraints  
+The  simplified  social  system  (post  +  chat  +  province  filtering)  introduces  several  limitations:  
+●  Matching  is  manual,  not  automated  (no  real-time  pairing  algorithm)  ●  Effectiveness  depends  on  user  activity  density  ●  In  low-user  regions,  finding  running  partners  may  be  difficult  
+Additionally:  
+●  Chat  latency  may  occur  under  poor  network  conditions  ●  Content  discovery  is  limited  to  keyword  search  and  province  filtering  
+ 
+7.  Location  Accuracy  and  Geographical  Limitations  
+Location-based  features  rely  on  GPS  accuracy,  which  may  be  affected  by:  
+●  Urban  environments  (signal  obstruction  by  buildings)  ●  Rural  or  mountainous  areas  ●  Weather  conditions  
+This  may  impact:  
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  37  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 38 =====
+●  Route  accuracy  ●  Distance  and  pace  calculations  ●  Province-based  filtering  reliability  
+ 
+8.  Privacy  and  Data  Sensitivity  
+Runna  processes  sensitive  user  data,  including:  
+●  Real-time  location  ●  Movement  patterns  ●  Social  interactions  (posts  and  messages)  
+Although  security  mechanisms  are  implemented,  risks  remain:  
+●  User  concerns  regarding  data  privacy  ●  Potential  unauthorized  access  if  security  is  compromised  ●  Requirement  for  user  consent  and  compliance  with  data  protection  regulations  
+Privacy  concerns  may  affect  user  trust  and  system  adoption.  
+ 
+9.  Scalability  and  System  Load  
+As  the  number  of  users  increases,  the  system  may  face:  
+●  Increased  API  request  load  ●  Higher  database  query  complexity  ●  Real-time  synchronization  challenges  (feed  and  chat)  
+Without  proper  scaling  strategies  (e.g.,  load  balancing,  caching),  system  performance  may  degrade  
+under
+ 
+high
+ 
+usage.
+ 
+ 
+10.  AI  Interpretation  Limitations  
+The  AI-based  route  generation  relies  on  natural  language  input,  which  may  introduce  ambiguity:   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  38  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 39 =====
+●  Vague  or  unclear  user  input  (e.g.,  “nice  route”)  ●  Misinterpretation  of  user  intent  ●  Inconsistent  parameter  extraction  
+This  may  result  in  suboptimal  or  unexpected  route  outputs  
+ 
+3.8  Milestones  Phase  1.  Proposal:  28  March  2026  -  02  April  2026  Phase  2.  Progress  I:  22  June  2026  -26  June  2026  Phase  3.  Progress  II:   31  August  2026  -  04  September  2026  Phase  4.  Final  progress:  19  October  -  02  November  2026    Phase  1:  Proposal   
+Tasks  Starts  Date  End  Date  Duration  Responsibility  
+Project  Proposal  24/02/2026  24/03/2026  36  Days  WN,  TN  
+Topic  defined  02/03/2026  24/03/2026  5  Days  WN,  TN  
+Topic  reviews  03/03/2026  24/03/2026  27  Days  WN,  TN  
+Proposal  submit  24/03/2026  24/04/2026  1  Days  WN,  TN  
+Prepare  for  the  presentation  
+30/03/2026  10/04/2026  20  Days  WN,  TN  
+Proposal  presentation  
+30/04/2026  01/05/2026  1  Days  WN,  TN  
+          Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  39  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 40 =====
+Phase  2:  Progress  1   
+Tasks  Starts  Date  End  Date  Duration  Responsibility  
+Implement  features  And  necessary  for  backend  
+24/04/2026  4/05/2026  10  Days  WN,  TN  
+Test&debugging  5/05/2026  15/05/2026  10  Days  WN,  TN  
+Implement  first  and  second  feature  
+16/05/2026  6/06/2026  20  Days  WN,  TN  
+Test&bug  fix  7/06/2026  17/06/2026  10  Days  WN,  TN  
+Update  Progress  and  submit  
+17/04/2026  21/06/2026  34  Days  WN,  TN  
+Progress1  presentation  
+22/06/2026  26/06/2026  4  Days  WN,  TN  
+ Phase  3:  Progress  2   
+Tasks  Starts  Date  End  Date  Duration  Responsibility  
+Implementation  and  coding  
+27/06/2026  10/08/2026  43  Days  WN,  TN  
+Test  14/07/2026  16/07/2026  2  Days  WN,  TN  
+Bug  fix  1/08/2026  8/08/2026  7  Days  WN,  TN  
+     update  and  Submit  Progress2  
+27/06/2026  15/08/2026  48  Days  WN,  TN  
+Progress  2  presentation  
+17/08/2026  21/08/2026  5  Days  WN,  TN  
+     Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  40  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 41 =====
+Phase  4:  Final   
+Tasks  Starts  Date  End  Date  Duration  Responsibility  
+System  test  1/10/2026  6/10/2026  5  Days  WN,  TN  
+Debugging  7/11/2026  19/11/2026  12  Days  WN,  TN  
+Deployment  20/11/2026  22/03/2026  2  Days  WN,  TN  
+Maintenance  and  last  test  
+23/11/2026  24/10/2026  1  Days  WN,  TN  
+Final  progress  and  submit  
+1/10/2026  29/10/2026  28  Days  WN,  TN  
+Final  progress  presentation  
+30/10/2026  2/11/2026  4  Days  WN,  TN  
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  41  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 42 =====
+Pct  of  task  complete  (%)  Progress  I  Progress  II  Feature  1:  Authentication  &  Roles  100  %  100  %  1.1  Register  1.2  Login  1.3  Logout  1.4  Password  Reset  1.5  Role-Based  Access  Control  
+✅  ✅  ✅  ✅  ✅  
+✅  ✅  ✅  ✅  ✅  
+Feature  2:  Route  Generation  &  Map  System  50%  100  %  2.1  View  Map  2.2  Track  Running  Route  2.3  AI  Route  Generation  2.4  Distance  /  Pace  Calculation  
+✅  ✅  ❌  ❌  
+      
+✅  ✅  ✅  ✅  
+Feature  3:  Social  Feed  &  Chat  System  80%  100  %  3.1  Create  Post  3.2  View  Feed  3.3  Search  Posts  3.4  Filter  3.5  Chat  system   
+✅  ✅  ✅  ✅  ❌  
+✅  ✅  ✅  ✅  ✅  
+Feature  4:  Accident  Detection  &  Emergency  Alert  30%  100%  
+ 4.1  Sensor  Data  Collection  (Accelerometer  /  Gyroscope  /  GPS   4.2  Basic  Motion  Detection   4.3  Multi-Condition  Detection  Logic  
+✅  ✅  ❌  
+✅  ✅  ✅   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  42  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 43 =====
+4.4  Emergency  Alert  Trigger   4.5  Countdown  &  User  Cancel  Mechanism   4.6  Send  Alert  to  Emergency  Contacts  
+❌  ❌  ❌  
+✅  ✅  ✅  
+AlertFeature  5:  Admin  Dashboard  25%  100%  
+5.1  Admin  Login  5.2  Monitor  System  Activity  5.3  View  Accident  Logs  5.4  Manage  Users  /  Reports  
+✅  ❌  ❌  ❌  
+✅  ✅  ✅  ✅   
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  43  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 44 =====
+3.9  Deliverable  Items  
+1.  Core  System  Deliverables  
+●  Mobile  Application  (Flutter  App)  
+ 
+A
+ 
+cross-platform
+ 
+mobile
+ 
+application
+ 
+developed
+ 
+using
+ 
+Flutter
+ 
+that
+ 
+provides
+ 
+the
+ 
+main
+ 
+user
+ 
+interface
+ 
+for
+ 
+running
+ 
+activities,
+ 
+including
+ 
+route
+ 
+generation,
+ 
+real-time
+ 
+tracking,
+ 
+social
+ 
+matching,
+ 
+and
+ 
+safety
+ 
+monitoring.
+ ●  Backend  API  (FastAPI)  
+ 
+A
+ 
+scalable
+ 
+backend
+ 
+service
+ 
+built
+ 
+with
+ 
+FastAPI
+ 
+responsible
+ 
+for
+ 
+handling
+ 
+business
+ 
+logic,
+ 
+AI
+ 
+processing
+ 
+integration,
+ 
+user
+ 
+management,
+ 
+and
+ 
+communication
+ 
+between
+ 
+frontend
+ 
+and
+ 
+external
+ 
+services.
+ ●  Database  Schema  (PostgreSQL)  
+ 
+A
+ 
+structured
+ 
+relational
+ 
+database
+ 
+implemented
+ 
+using
+ 
+PostgreSQL
+ 
+to
+ 
+store
+ 
+user
+ 
+data,
+ 
+running
+ 
+activities,
+ 
+routes,
+ 
+matching
+ 
+sessions,
+ 
+and
+ 
+system
+ 
+logs.
+ 
+2.  Documentation  Deliverables  
+●  Software  Requirement  Specification  (SRS)  
+ 
+A
+ 
+formal
+ 
+document
+ 
+describing
+ 
+system
+ 
+requirements,
+ 
+including
+ 
+functional
+ 
+and
+ 
+non-functional
+ 
+requirements,
+ 
+use
+ 
+cases,
+ 
+and
+ 
+constraints.
+ ●  System  Architecture  Design  
+ 
+Detailed
+ 
+architecture
+ 
+diagrams
+ 
+illustrating
+ 
+system
+ 
+components,
+ 
+data
+ 
+flow,
+ 
+and
+ 
+integration
+ 
+between
+ 
+subsystems
+ 
+(AI,
+ 
+Maps,
+ 
+Sensors,
+ 
+Backend).
+ ●  Database  Design  /  ER  Diagram  
+ER
+ 
+Diagrams
+ 
+and
+ 
+schema
+ 
+definitions
+ 
+describing
+ 
+database
+ 
+structure
+ 
+and
+ 
+relationships.
+ ●  Use  Case  Diagram  
+ 
+UML
+ 
+diagrams
+ 
+representing
+ 
+interactions
+ 
+between
+ 
+users
+ 
+(Guest,
+ 
+Member,
+ 
+Admin)
+ 
+and
+ 
+system
+ 
+features.
+ ●  System  Workflow  /  User  Journey  
+ 
+Visual
+ 
+representation
+ 
+of
+ 
+user
+ 
+flows,
+ 
+including
+ 
+route
+ 
+generation,
+ 
+running
+ 
+session,
+ 
+and
+ 
+emergency
+ 
+detection
+ 
+processes.
+ ●  API  Documentation  
+ 
+Complete
+ 
+documentation
+ 
+of
+ 
+RESTful
+ 
+endpoints,
+ 
+including
+ 
+request/response
+ 
+formats,
+ 
+authentication,
+ 
+and
+ 
+integration
+ 
+details.
+ ●  Final  Project  Report  
+ 
+Comprehensive
+ 
+report
+ 
+covering
+ 
+system
+ 
+design,
+ 
+implementation,
+ 
+evaluation,
+ 
+and
+ 
+project
+ 
+outcomes.
+ ●  Presentation  Slides  
+ 
+Slides
+ 
+summarizing
+ 
+project
+ 
+concept,
+ 
+system
+ 
+architecture,
+ 
+features,
+ 
+and
+ 
+demonstration
+ 
+for
+ 
+final
+ 
+presentation.
+  Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  44  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 45 =====
+3.  Software  Modules  
+●  Runna  Application  Platform  
+ 
+The
+ 
+complete
+ 
+integrated
+ 
+system
+ 
+combining
+ 
+mobile
+ 
+app,
+ 
+backend,
+ 
+and
+ 
+AI
+ 
+services
+ 
+into
+ 
+a
+ 
+unified
+ 
+running
+ 
+assistant
+ 
+platform.
+ ●  AI  Route  Generation  Module  
+ 
+A
+ 
+module
+ 
+that
+ 
+integrates
+ 
+Gemini
+ 
+and
+ 
+Google
+ 
+Maps
+ 
+Platform
+ 
+to
+ 
+generate
+ 
+optimized
+ 
+running
+ 
+routes
+ 
+based
+ 
+on
+ 
+user
+ 
+input
+ 
+and
+ 
+constraints.
+ ●  Real-Time  Social  Matching  Module  
+ 
+A
+ 
+subsystem
+ 
+that
+ 
+matches
+ 
+users
+ 
+dynamically
+ 
+based
+ 
+on
+ 
+location,
+ 
+pace,
+ 
+and
+ 
+availability
+ 
+using
+ 
+real-time
+ 
+data
+ 
+processing.
+ ●  Sensor-Based  Accident  Detection  Module  
+ 
+A
+ 
+real-time
+ 
+processing
+ 
+module
+ 
+that
+ 
+analyzes
+ 
+accelerometer,
+ 
+gyroscope,
+ 
+and
+ 
+GPS
+ 
+data
+ 
+to
+ 
+detect
+ 
+abnormal
+ 
+events
+ 
+and
+ 
+trigger
+ 
+emergency
+ 
+alerts.
+ ●  Admin  Dashboard  for  System  Monitoring  
+ 
+A
+ 
+web-based
+ 
+dashboard
+ 
+that
+ 
+allows
+ 
+administrators
+ 
+to
+ 
+monitor
+ 
+system
+ 
+activity,
+ 
+user
+ 
+statistics,
+ 
+and
+ 
+safety
+ 
+events.
+ ●  RESTful  API  Services  
+ 
+A
+ 
+set
+ 
+of
+ 
+API
+ 
+endpoints
+ 
+that
+ 
+support
+ 
+all
+ 
+system
+ 
+features,
+ 
+including
+ 
+authentication,
+ 
+route
+ 
+generation,
+ 
+matching,
+ 
+and
+ 
+data
+ 
+management.
+ 
+ 
+ 
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  45  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 46 =====
+Chapter  Four  |  Reference  
+[1]  Visual  Studio  Code.  [Online].  Available: https://code.visualstudio.com/  [Accessed:  Mar.  10,  2026].  
+[2]  Figma.  [Online].  Available: https://www.figma.com/  [Accessed:  Mar.  10,  2026].  
+[3]  GitHub.  [Online].  Available: https://github.com/  [Accessed:  Mar.  10,  2026].  
+[4]  Strava.  [Online].  Available: https://www.strava.com/  [Accessed:  Mar.  10,  2026].  
+[5]  FastAPI.  [Online].  Available: https://fastapi.tiangolo.com/  [Accessed:  Mar.  10,  2026].  
+[6]  PostgreSQL.  [Online].  Available: https://www.postgresql.org/  [Accessed:  Mar.  10,  2026].  
+[7]  Google  Maps  Platform.  [Online].  Available: https://developers.google.com/maps  [Accessed:  Mar.  10,  2026].  
+[8]  Google  Gemini.  [Online].  Available: https://ai.google.dev/  [Accessed:  Mar.  10,  2026].  
+[9]  Flutter.  
+“Flutter
+ 
+(software),”
+ 
+Wikipedia.
+ [Online].  Available: https://en.wikipedia.org/wiki/Flutter_(software)  [Accessed:  Feb.  26,  2026].  
+[10]  Python.   Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  46  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
+
+===== PAGE 47 =====
+“Python  (programming  language),”  Wikipedia.  [Online].  Available: https://en.wikipedia.org/wiki/Python_(programming_language)  [Accessed:  Feb.  26,  2026].  
+[11]  PostgreSQL.  
+“PostgreSQL,”
+ 
+Wikipedia.
+ [Online].  Available: https://en.wikipedia.org/wiki/PostgreSQL  [Accessed:  Feb.  26,  2026].  
+ 
+ Document  Name  
+Runna_Project.pdf  Owner  WN,  TN  Page  47  /  47  
+Document  Type  
+Proposal  Release  Date  
+28-4-  2025  
+Print  Date  
+-
