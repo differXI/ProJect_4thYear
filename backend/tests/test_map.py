@@ -31,3 +31,12 @@ def test_base_map_and_manual_route(client, auth_headers):
         },
     )
     assert marker_response.status_code == 201
+    marker_id = marker_response.json()["id"]
+
+    validate_response = client.post(
+        f"/api/map/markers/{marker_id}/validate",
+        headers=auth_headers,
+        json={"confirmed": True},
+    )
+    assert validate_response.status_code == 200
+    assert validate_response.json()["confirm_count"] >= 1

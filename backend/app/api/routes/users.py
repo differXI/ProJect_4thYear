@@ -3,18 +3,17 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.schemas.contact import EmergencyContactCreate, EmergencyContactResponse
+from app.schemas.serializers import user_to_response
 from app.schemas.user import UserResponse, UserUpdate
-from app.services.user_service import UserService
 from app.services.auth_service import get_current_user
+from app.services.user_service import UserService
 
 router = APIRouter()
 
 
 @router.get("", response_model=UserResponse)
-def get_me(
-    current_user=Depends(get_current_user),
-) -> UserResponse:
-    return UserResponse.model_validate(current_user)
+def get_me(current_user=Depends(get_current_user)) -> UserResponse:
+    return user_to_response(current_user)
 
 
 @router.put("", response_model=UserResponse)
@@ -25,7 +24,7 @@ def update_me(
 ) -> UserResponse:
     service = UserService(db)
     user = service.update_user(current_user, payload)
-    return UserResponse.model_validate(user)
+    return user_to_response(user)
 
 
 @router.get("/emergency-contacts", response_model=list[EmergencyContactResponse])

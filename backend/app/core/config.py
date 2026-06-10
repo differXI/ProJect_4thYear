@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     cors_origins: List[str] = Field(default_factory=list, alias="CORS_ORIGINS")
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    pin_expiry_hours: int = Field(default=24, alias="PIN_EXPIRY_HOURS")
+    admin_email: str = Field(default="admin@runna.local", alias="ADMIN_EMAIL")
+    admin_password: str = Field(default="admin1234", alias="ADMIN_PASSWORD")
 
     model_config = SettingsConfigDict(
         env_file=".env",

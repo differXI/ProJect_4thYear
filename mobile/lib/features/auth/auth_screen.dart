@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
 import '../../core/runna_api.dart';
+import '../../core/theme.dart';
 import 'auth_controller.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -13,7 +14,8 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
   final _loginIdentifierController = TextEditingController();
@@ -25,18 +27,19 @@ class _AuthScreenState extends State<AuthScreen> {
   final _registerPasswordController = TextEditingController();
 
   HealthResponse? _health;
-  UserProfile? _user;
   String? _message;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadHealth();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _loginIdentifierController.dispose();
     _loginPasswordController.dispose();
     _registerFirstNameController.dispose();
@@ -51,15 +54,10 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       final health = await widget.controller.getHealth();
       if (!mounted) return;
-      setState(() {
-        _health = health;
-        _message = null;
-      });
+      setState(() => _health = health);
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _message = 'Health check failed: $error';
-      });
+      setState(() => _message = 'Backend offline: $error');
     }
   }
 
@@ -70,25 +68,17 @@ class _AuthScreenState extends State<AuthScreen> {
       _message = null;
     });
     try {
-      final user = await widget.controller.login(
+      await widget.controller.login(
         usernameOrEmail: _loginIdentifierController.text.trim(),
         password: _loginPasswordController.text,
       );
       if (!mounted) return;
-      setState(() {
-        _user = user;
-      });
+      setState(() => _message = 'Signed in successfully.');
     } on RunnaApiException catch (error) {
       if (!mounted) return;
-      setState(() {
-        _message = error.message;
-      });
+      setState(() => _message = error.message);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -99,7 +89,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _message = null;
     });
     try {
-      final user = await widget.controller.register(
+      await widget.controller.register(
         firstName: _registerFirstNameController.text.trim(),
         lastName: _registerLastNameController.text.trim(),
         username: _registerUsernameController.text.trim(),
@@ -107,193 +97,171 @@ class _AuthScreenState extends State<AuthScreen> {
         password: _registerPasswordController.text,
       );
       if (!mounted) return;
-      setState(() {
-        _user = user;
-        _message = 'Registration successful. You can log in now.';
-      });
+      setState(() => _message = 'Account created. You can sign in now.');
+      _tabController.animateTo(0);
     } on RunnaApiException catch (error) {
       if (!mounted) return;
-      setState(() {
-        _message = error.message;
-      });
+      setState(() => _message = error.message);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF4EFE8),
-        appBar: AppBar(
-          title: const Text('Runna'),
-          backgroundColor: const Color(0xFF23402B),
-          foregroundColor: Colors.white,
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Login'),
-              Tab(text: 'Register'),
-            ],
+    final user = widget.controller.currentUser;
+
+    if (user != null) {
+      return ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const SectionTitle('Account', subtitle: 'Your Runna member profile'),
+          const SizedBox(height: 16),
+          RunnaCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(user.fullName, style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 6),
+                Text('@${user.username} • ${user.email}'),
+                const SizedBox(height: 8),
+                Chip(
+                  label: Text(user.roleName.toUpperCase()),
+                  backgroundColor: RunnaColors.accent.withValues(alpha: 0.25),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.tonal(
+                  onPressed: widget.controller.logout,
+                  child: const Text('Sign out'),
+                ),
+              ],
+            ),
           ),
-        ),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
+          const SizedBox(height: 16),
+          RunnaCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Demo admin account'),
+                const SizedBox(height: 8),
+                const Text('Email: admin@runna.local'),
+                const Text('Password: admin1234'),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const SectionTitle('Welcome to Runna', subtitle: 'Sign in or create a member account'),
+        const SizedBox(height: 16),
+        RunnaCard(
+          child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Backend status',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(_health?.status ?? 'Checking...'),
-                    if (_user != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        'Active member: ${_user!.firstName} ${_user!.lastName}',
-                        style: TextStyle(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text('@${_user!.username}'),
-                    ],
-                    if (_message != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        _message!,
-                        style: TextStyle(color: colorScheme.error),
-                      ),
-                    ],
-                  ],
+              Icon(
+                _health?.status == 'ok' ? Icons.check_circle_outline : Icons.cloud_off_outlined,
+                color: RunnaColors.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _health?.status == 'ok'
+                      ? 'Backend connected'
+                      : _message ?? 'Checking backend...',
                 ),
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 520,
-                child: TabBarView(
-                  children: [
-                    _AuthCard(
-                      title: 'Welcome back',
-                      subtitle: 'Sign in to the first Runna build.',
-                      child: Form(
-                        key: _loginFormKey,
-                        child: Column(
-                          children: [
-                            _FormField(
-                              controller: _loginIdentifierController,
-                              label: 'Username or email',
-                            ),
-                            const SizedBox(height: 12),
-                            _FormField(
-                              controller: _loginPasswordController,
-                              label: 'Password',
-                              obscureText: true,
-                            ),
-                            const SizedBox(height: 20),
-                            _PrimaryButton(
-                              label: _isLoading ? 'Signing in...' : 'Sign in',
-                              onPressed: _isLoading ? null : _handleLogin,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    _AuthCard(
-                      title: 'Create account',
-                      subtitle: 'Set up the first member profile for Runna.',
-                      child: Form(
-                        key: _registerFormKey,
-                        child: Column(
-                          children: [
-                            _FormField(
-                              controller: _registerFirstNameController,
-                              label: 'First name',
-                            ),
-                            const SizedBox(height: 12),
-                            _FormField(
-                              controller: _registerLastNameController,
-                              label: 'Last name',
-                            ),
-                            const SizedBox(height: 12),
-                            _FormField(
-                              controller: _registerUsernameController,
-                              label: 'Username',
-                            ),
-                            const SizedBox(height: 12),
-                            _FormField(
-                              controller: _registerEmailController,
-                              label: 'Email',
-                            ),
-                            const SizedBox(height: 12),
-                            _FormField(
-                              controller: _registerPasswordController,
-                              label: 'Password',
-                              obscureText: true,
-                            ),
-                            const SizedBox(height: 20),
-                            _PrimaryButton(
-                              label: _isLoading ? 'Creating...' : 'Create account',
-                              onPressed: _isLoading ? null : _handleRegister,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              TextButton(onPressed: _loadHealth, child: const Text('Retry')),
+            ],
+          ),
+        ),
+        if (_message != null && user == null) ...[
+          const SizedBox(height: 12),
+          Text(_message!, style: const TextStyle(color: RunnaColors.danger)),
+        ],
+        const SizedBox(height: 16),
+        TabBar(
+          controller: _tabController,
+          labelColor: RunnaColors.primaryDark,
+          tabs: const [Tab(text: 'Sign in'), Tab(text: 'Register')],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 430,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _AuthForm(
+                formKey: _loginFormKey,
+                title: 'Sign in',
+                fields: [
+                  _Field(controller: _loginIdentifierController, label: 'Username or email'),
+                  _Field(controller: _loginPasswordController, label: 'Password', obscure: true),
+                ],
+                buttonLabel: _isLoading ? 'Signing in...' : 'Sign in',
+                onSubmit: _isLoading ? null : _handleLogin,
+              ),
+              _AuthForm(
+                formKey: _registerFormKey,
+                title: 'Create account',
+                fields: [
+                  _Field(controller: _registerFirstNameController, label: 'First name'),
+                  _Field(controller: _registerLastNameController, label: 'Last name'),
+                  _Field(controller: _registerUsernameController, label: 'Username'),
+                  _Field(controller: _registerEmailController, label: 'Email'),
+                  _Field(controller: _registerPasswordController, label: 'Password', obscure: true),
+                ],
+                buttonLabel: _isLoading ? 'Creating...' : 'Create account',
+                onSubmit: _isLoading ? null : _handleRegister,
               ),
             ],
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        const RunnaCard(
+          child: Text(
+            'Guests can browse the map and hazard pins without signing in. '
+            'Create an account to save routes, track runs, and receive AI insights.',
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _AuthCard extends StatelessWidget {
-  const _AuthCard({
+class _AuthForm extends StatelessWidget {
+  const _AuthForm({
+    required this.formKey,
     required this.title,
-    required this.subtitle,
-    required this.child,
+    required this.fields,
+    required this.buttonLabel,
+    required this.onSubmit,
   });
 
+  final GlobalKey<FormState> formKey;
   final String title;
-  final String subtitle;
-  final Widget child;
+  final List<Widget> fields;
+  final String buttonLabel;
+  final VoidCallback? onSubmit;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: SingleChildScrollView(
+    return RunnaCard(
+      child: Form(
+        key: formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.headlineSmall),
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            ...fields.expand((field) => [field, const SizedBox(height: 12)]),
             const SizedBox(height: 8),
-            Text(subtitle),
-            const SizedBox(height: 20),
-            child,
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(onPressed: onSubmit, child: Text(buttonLabel)),
+            ),
           ],
         ),
       ),
@@ -301,57 +269,24 @@ class _AuthCard extends StatelessWidget {
   }
 }
 
-class _FormField extends StatelessWidget {
-  const _FormField({
+class _Field extends StatelessWidget {
+  const _Field({
     required this.controller,
     required this.label,
-    this.obscureText = false,
+    this.obscure = false,
   });
 
   final TextEditingController controller;
   final String label;
-  final bool obscureText;
+  final bool obscure;
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      obscureText: obscureText,
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return '$label is required';
-        }
-        return null;
-      },
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatelessWidget {
-  const _PrimaryButton({
-    required this.label,
-    required this.onPressed,
-  });
-
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF23402B),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-        child: Text(label),
-      ),
+      obscureText: obscure,
+      validator: (value) => value == null || value.trim().isEmpty ? '$label is required' : null,
+      decoration: InputDecoration(labelText: label),
     );
   }
 }

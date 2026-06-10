@@ -11,10 +11,15 @@ def test_start_and_finish_run(client, auth_headers):
     finish_response = client.post(
         f"/api/runs/{run_id}/finish",
         headers=auth_headers,
-        json={"distance_km": 5.25, "duration_seconds": 1800},
+        json={"distance_km": 5.25, "duration_seconds": 1800, "step_count": 5400},
     )
     assert finish_response.status_code == 200
-    assert finish_response.json()["status"] == "finished"
+    body = finish_response.json()
+    assert body["status"] == "finished"
+    assert body["ai_insight"]
+    assert body["ai_reasoning"]
+    assert body["ai_recommendations"]
+    assert body["avg_pace_min_per_km"] > 0
 
     list_response = client.get("/api/runs", headers=auth_headers)
     assert list_response.status_code == 200

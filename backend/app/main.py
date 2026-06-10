@@ -5,10 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.db.session import SessionLocal
+from app.services.seed_service import seed_initial_data
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    db = SessionLocal()
+    try:
+        seed_initial_data(db)
+    finally:
+        db.close()
     yield
 
 
@@ -22,6 +29,14 @@ if settings.cors_origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

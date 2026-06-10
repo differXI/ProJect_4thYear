@@ -1,19 +1,34 @@
+
 import json
+from datetime import datetime, timedelta, timezone
 from math import sqrt
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.hazard_marker import HazardMarker
 from app.models.map_edge import MapEdge
 from app.models.map_node import MapNode
-from app.models.manual_route import ManualRoute
+from app.models.pin_validation import PinValidation
 from app.models.user import User
 from app.schemas.manual_route import ManualRouteCreate
 from app.schemas.map import HazardMarkerCreate
-
+from app.models.manual_route import ManualRoute
 
 class MapService:
+    PIN_CATEGORIES = {
+        "construction",
+        "road_closure",
+        "animals",
+        "obstacle",
+        "accident",
+        "dark_area",
+        "unsafe_crossing",
+        "other",
+    }
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -43,6 +58,7 @@ class MapService:
 
         first_user_id = self.db.scalar(select(User.id).limit(1))
         if first_user_id is not None:
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.pin_expiry_hours)
             markers = [
                 HazardMarker(
                     user_id=first_user_id,
@@ -51,7 +67,9 @@ class MapService:
                     lat=18.8076,
                     lng=98.9576,
                     note="Fast vehicles cross this segment",
-                    status="approved",
+                    status="active",
+                    confirm_count=2,
+                    expires_at=expires_at,
                 ),
                 HazardMarker(
                     user_id=first_user_id,
@@ -60,122 +78,36 @@ class MapService:
                     lat=18.7996,
                     lng=98.9490,
                     note="Low light after sunset",
-                    status="approved",
+                    status="active",
+                    confirm_count=1,
+                    expires_at=expires_at,
                 ),
             ]
             self.db.add_all(markers)
         self.db.commit()
 
-    def import_osm_data(self, min_lat: float, min_lng: float, max_lat: float, max_lng: float) -> None:
-        """Import roads and nodes from Overpass API for given bbox."""
-        # Clear existing demo data if any
-        self.db.execute(delete(MapEdge))
-        self.db.execute(delete(MapNode))
-
-        api = overpy.Overpass()
-        
-        # Query highways in bbox
-        query = f'''
-        (
-          way["highway"]({min_lat},{min_lng},{max_lat},{max_lng});
-          >;
-        );
-        out geom;
-        '''
-        
-        result = api.query(query)
-        
-        # Create nodes dict
-        nodes: Dict[int, MapNode] = {}
-        for node in result.nodes:
-            map_node = MapNode(
-                osm_id=node.id,
-                name=f"Node {node.id}",
-                lat=node.lat,
-                lng=node.lon,
-                is_intersection=False,  # Detect later
-            )
-            self.db.add(map_node)
-            nodes[node.id] = map_node
-        
-        self.db.flush()  # Get IDs
-        
-        # Create edges from ways
-        risk_map = {
-            'motorway': 0.95,
-            'trunk': 0.92,
-            'primary': 0.85,
-            'secondary': 0.75,
-            'tertiary': 0.65,
-            'unclassified': 0.45,
-            'residential': 0.35,
-            'service': 0.40,
-            'footway': 0.15,
-            'path': 0.10,
-            'cycleway': 0.12,
-        }
-        
-        for way in result.ways:
-            if len(way.nodes) < 2:
-                continue
-                
-            highway_tag = next((tag.v for tag in way.tags if tag.k == 'highway'), 'unclassified')
-            risk_score = risk_map.get(highway_tag, 0.5)
-            speed_limit = 50.0  # Default
-            
-            # Calc length
-            length_m = 0.0
-            geo_points = []
-            prev_node = None
-            for node_id in way.nodes:
-                if node_id in nodes:
-                    curr_node = nodes[node_id]
-                    geo_points.append({"lat": curr_node.lat, "lng": curr_node.lng})
-                    
-                    if prev_node:
-                        # Haversine approx
-                        dlat = curr_node.lat - prev_node.lat
-                        dlng = curr_node.lng - prev_node.lng
-                        length_m += (((111 * dlat)**2 + (111 * 111 * 0.85 * dlng)**2)**0.5 * 1000)
-                        
-                    prev_node = curr_node
-            
-            if len(geo_points) >= 2:
-                edge = MapEdge(
-                    start_node_id=nodes[way.nodes[0]].id,
-                    end_node_id=nodes[way.nodes[-1]].id,
-                    road_name=highway_tag if way.tags else f"Way {way.id}",
-                    road_class=highway_tag,
-                    speed_limit_kph=speed_limit,
-                    length_m=length_m,
-                    risk_score=risk_score,
-                    is_forbidden=False,
-                    geometry_json=json.dumps(geo_points),
-                )
-                self.db.add(edge)
-        
-        # Mark intersections (simplified: nodes with degree >2)
-        edge_stmt = select(MapEdge.start_node_id, MapEdge.end_node_id)
-        connections = self.db.execute(edge_stmt).all()
-        node_degrees = {}
-        for start_id, end_id in connections:
-            node_degrees[start_id] = node_degrees.get(start_id, 0) + 1
-            node_degrees[end_id] = node_degrees.get(end_id, 0) + 1
-        
-        for node_id, degree in node_degrees.items():
-            if degree > 2:
-                node = self.db.scalar(select(MapNode).where(MapNode.id == node_id))
-                if node:
-                    node.is_intersection = True
-
     def get_base_map(self) -> tuple[list[MapNode], list[MapEdge], list[HazardMarker]]:
         self.ensure_seed_map()
+        self.expire_stale_markers()
         nodes = list(self.db.scalars(select(MapNode).order_by(MapNode.id)).all())
         edges = list(self.db.scalars(select(MapEdge).order_by(MapEdge.id)).all())
-        markers = list(self.db.scalars(select(HazardMarker).order_by(HazardMarker.id)).all())
+        markers = list(
+            self.db.scalars(
+                select(HazardMarker)
+                .where(HazardMarker.status == "active")
+                .order_by(HazardMarker.created_at.desc())
+            ).all()
+        )
         return nodes, edges, markers
 
     def create_marker(self, user: User, payload: HazardMarkerCreate) -> HazardMarker:
+        if payload.marker_type not in self.PIN_CATEGORIES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid category. Choose one of: {', '.join(sorted(self.PIN_CATEGORIES))}",
+            )
+
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.pin_expiry_hours)
         marker = HazardMarker(
             user_id=user.id,
             marker_type=payload.marker_type,
@@ -183,7 +115,10 @@ class MapService:
             lat=payload.lat,
             lng=payload.lng,
             note=payload.note,
-            status="approved",
+            status="active",
+            confirm_count=0,
+            dismiss_count=0,
+            expires_at=expires_at,
         )
         self.db.add(marker)
         self.db.commit()
@@ -192,74 +127,98 @@ class MapService:
 
     def list_markers(self) -> list[HazardMarker]:
         self.ensure_seed_map()
-        return list(self.db.scalars(select(HazardMarker).order_by(HazardMarker.created_at.desc())).all())
+        self.expire_stale_markers()
+        return list(
+            self.db.scalars(
+                select(HazardMarker)
+                .where(HazardMarker.status == "active")
+                .order_by(HazardMarker.created_at.desc())
+            ).all()
+        )
 
-    def create_manual_route(self, user: User, payload: ManualRouteCreate) -> ManualRoute:
-        # Ensure map is loaded
-        self.ensure_real_map()
-        
-        # Calc original distance
+    def validate_marker(self, marker_id: int, user: User, confirmed: bool) -> HazardMarker:
+        marker = self.db.get(HazardMarker, marker_id)
+        if marker is None or marker.status != "active":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pin not found")
+
+        existing = self.db.scalar(
+            select(PinValidation).where(
+                PinValidation.marker_id == marker_id,
+                PinValidation.user_id == user.id,
+            )
+        )
+        if existing is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You already validated this pin")
+
+        self.db.add(
+            PinValidation(
+                marker_id=marker_id,
+                user_id=user.id,
+                confirmed=confirmed,
+            )
+        )
+
+        if confirmed:
+            marker.confirm_count += 1
+            marker.expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.pin_expiry_hours)
+        else:
+            marker.dismiss_count += 1
+            if marker.dismiss_count >= 2:
+                marker.status = "expired"
+
+        self.db.add(marker)
+        self.db.commit()
+        self.db.refresh(marker)
+        return marker
+
+    def expire_stale_markers(self) -> None:
+        now = datetime.now(timezone.utc)
+        stale = list(
+            self.db.scalars(
+                select(HazardMarker).where(
+                    HazardMarker.status == "active",
+                    HazardMarker.expires_at.is_not(None),
+                    HazardMarker.expires_at < now,
+                )
+            ).all()
+        )
+        if not stale:
+            return
+        for marker in stale:
+            marker.status = "expired"
+            self.db.add(marker)
+        self.db.commit()
+
+    def create_manual_route(self, user: User, payload: ManualRouteCreate):
+
+        self.ensure_seed_map()
+
+        if len(payload.points) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least two points are required",
+            )
+
         distance_km = 0.0
         points = payload.points
-        for i in range(1, len(points)):
-            prev_pt = points[i - 1]
-            curr_pt = points[i]
+        for index in range(1, len(points)):
+            prev_pt = points[index - 1]
+            curr_pt = points[index]
             dlat = curr_pt.lat - prev_pt.lat
             dlng = curr_pt.lng - prev_pt.lng
-            distance_km += sqrt((dlat * 111)**2 + (dlng * 111 * 0.85)**2)
-        
-        # Simple snapping and validation
-        snapped_points = []
-        risky_count = 0
-        forbidden_count = 0
-        snap_count = 0
-        warnings = []
-        
-        edges = self.db.scalars(select(MapEdge)).all()
-        
-        for pt in points:
-            # Find nearest edge (simple: min distance to edge mid point)
-            min_dist = float('inf')
-            snapped_pt = pt
-            for edge in edges:
-                # Parse geometry_json roughly
-                geo = json.loads(edge.geometry_json)
-                if len(geo) >= 2:
-                    mid_lat = sum(p['lat'] for p in geo) / len(geo)
-                    mid_lng = sum(p['lng'] for p in geo) / len(geo)
-                    dist = sqrt(((pt.lat - mid_lat) * 111)**2 + ((pt.lng - mid_lng) * 111 * 0.85)**2)
-                    if dist < min_dist and dist < 0.005:  # 5m ~ 0.000045 deg, buffer 0.005
-                        min_dist = dist
-                        snapped_pt = type('Point', (), {'lat': mid_lat, 'lng': mid_lng})()
-                        snap_count += 1
-            
-            snapped_points.append(snapped_pt)
-            
-            # Check if snapped to risky edge
-            if min_dist < 0.005:
-                for edge in edges:
-                    if edge.risk_score > 0.7:
-                        risky_count += 1
-                        warnings.append(f"Risky edge: {edge.road_name} (risk={edge.risk_score:.2f})")
-                        break
-                if any(edge.is_forbidden for edge in edges):
-                    forbidden_count += 1
-                    warnings.append("Forbidden edge detected")
-        
-        snapped_path = [p.__dict__ for p in snapped_points]
-        snapped_json = json.dumps(snapped_path)
+            distance_km += sqrt((dlat * 111) ** 2 + (dlng * 111 * 0.85) ** 2)
+
         validation = {
-            "risky_edges": risky_count,
-            "forbidden_edges": forbidden_count,
-            "snapped_points": snap_count,
-            "total_warnings": "; ".join(warnings[:3])  # First 3
+            "risky_edges": 0,
+            "forbidden_edges": 0,
+            "snapped_points": 0,
+            "total_warnings": "",
         }
-        
+
         manual_route = ManualRoute(
             user_id=user.id,
             name=payload.name,
-            path_json=json.dumps([p.model_dump() for p in points]),
-            snapped_path_json=snapped_json if snap_count > 0 else None,
+            path_json=json.dumps([point.model_dump() for point in points]),
             distance_km=round(distance_km, 2),
             validation_json=json.dumps(validation),
         )
@@ -268,10 +227,25 @@ class MapService:
         self.db.refresh(manual_route)
         return manual_route
 
-    def list_manual_routes(self, user_id: int) -> list[ManualRoute]:
+    def list_manual_routes(self, user_id: int) -> list:
+        from app.models.manual_route import ManualRoute
+
         return list(
-            self.db.scalars(select(ManualRoute).where(ManualRoute.user_id == user_id).order_by(ManualRoute.created_at.desc())).all()
+            self.db.scalars(
+                select(ManualRoute)
+                .where(ManualRoute.user_id == user_id)
+                .order_by(ManualRoute.created_at.desc())
+            ).all()
         )
+
+    def delete_manual_route(self, route_id: int, user_id: int) -> None:
+        from app.models.manual_route import ManualRoute
+
+        route = self.db.get(ManualRoute, route_id)
+        if route is None or route.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+        self.db.delete(route)
+        self.db.commit()
 
     def _edge(
         self,

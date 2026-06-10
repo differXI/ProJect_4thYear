@@ -13,6 +13,7 @@ class AuthController extends ChangeNotifier {
   String? get accessToken => _accessToken;
   UserProfile? get currentUser => _currentUser;
   bool get isAuthenticated => _accessToken != null && _currentUser != null;
+  bool get isAdmin => _currentUser?.isAdmin ?? false;
 
   Future<HealthResponse> getHealth() => _api.getHealth();
 
@@ -22,7 +23,7 @@ class AuthController extends ChangeNotifier {
     required String username,
     required String email,
     required String password,
-  }) async {
+  }) {
     return _api.register(
       firstName: firstName,
       lastName: lastName,
@@ -46,6 +47,12 @@ class AuthController extends ChangeNotifier {
     return _currentUser!;
   }
 
+  void logout() {
+    _accessToken = null;
+    _currentUser = null;
+    notifyListeners();
+  }
+
   Future<BaseMapData> getBaseMap() => _api.getBaseMap();
 
   Future<List<HazardMarkerItem>> getMarkers() => _api.getMarkers();
@@ -56,10 +63,9 @@ class AuthController extends ChangeNotifier {
     required double lat,
     required double lng,
     String? note,
-  }) async {
-    final token = _requireToken();
+  }) {
     return _api.createMarker(
-      accessToken: token,
+      accessToken: _requireToken(),
       markerType: markerType,
       severity: severity,
       lat: lat,
@@ -68,66 +74,84 @@ class AuthController extends ChangeNotifier {
     );
   }
 
-  Future<List<ManualRouteItem>> getManualRoutes() async {
-    final token = _requireToken();
-    return _api.getManualRoutes(token);
+  Future<HazardMarkerItem> validateMarker({
+    required int markerId,
+    required bool confirmed,
+  }) {
+    return _api.validateMarker(
+      accessToken: _requireToken(),
+      markerId: markerId,
+      confirmed: confirmed,
+    );
+  }
+
+  Future<List<ManualRouteItem>> getManualRoutes() {
+    return _api.getManualRoutes(_requireToken());
   }
 
   Future<ManualRouteItem> createManualRoute({
     required String name,
     required List<RoutePoint> points,
-  }) async {
-    final token = _requireToken();
+  }) {
     return _api.createManualRoute(
-      accessToken: token,
+      accessToken: _requireToken(),
       name: name,
       points: points,
     );
   }
 
-  Future<List<RunItem>> getRuns() async {
-    final token = _requireToken();
-    return _api.getRuns(token);
+  Future<void> deleteManualRoute(int routeId) {
+    return _api.deleteManualRoute(accessToken: _requireToken(), routeId: routeId);
   }
 
-  Future<RunItem> startRun({String? notes}) async {
-    final token = _requireToken();
-    return _api.startRun(accessToken: token, notes: notes);
+  Future<List<RunItem>> getRuns() => _api.getRuns(_requireToken());
+
+  Future<RunItem> getRun(int runId) => _api.getRun(accessToken: _requireToken(), runId: runId);
+
+  Future<RunItem> startRun({int? manualRouteId, String? notes}) {
+    return _api.startRun(
+      accessToken: _requireToken(),
+      manualRouteId: manualRouteId,
+      notes: notes,
+    );
   }
 
   Future<RunItem> finishRun({
     required int runId,
     required double distanceKm,
     required int durationSeconds,
-  }) async {
-    final token = _requireToken();
+    required int stepCount,
+  }) {
     return _api.finishRun(
-      accessToken: token,
+      accessToken: _requireToken(),
       runId: runId,
       distanceKm: distanceKm,
       durationSeconds: durationSeconds,
+      stepCount: stepCount,
     );
   }
 
-  Future<List<RoutePlanItem>> getRoutes() async {
-    final token = _requireToken();
-    return _api.getRoutes(token);
+  Future<AdminStats> getAdminStats() => _api.getAdminStats(_requireToken());
+
+  Future<List<AdminUserItem>> getAdminUsers() => _api.getAdminUsers(_requireToken());
+
+  Future<AdminUserItem> updateAdminUser({
+    required int userId,
+    bool? isActive,
+    String? roleName,
+  }) {
+    return _api.updateAdminUser(
+      accessToken: _requireToken(),
+      userId: userId,
+      isActive: isActive,
+      roleName: roleName,
+    );
   }
 
-  Future<RoutePlanItem> generateRoute({
-    required String startLabel,
-    required double targetDistanceKm,
-    required String routeType,
-    required String environment,
-  }) async {
-    final token = _requireToken();
-    return _api.generateRoute(
-      accessToken: token,
-      startLabel: startLabel,
-      targetDistanceKm: targetDistanceKm,
-      routeType: routeType,
-      environment: environment,
-    );
+  Future<List<HazardMarkerItem>> getAdminMarkers() => _api.getAdminMarkers(_requireToken());
+
+  Future<void> deleteAdminMarker(int markerId) {
+    return _api.deleteAdminMarker(accessToken: _requireToken(), markerId: markerId);
   }
 
   String _requireToken() {

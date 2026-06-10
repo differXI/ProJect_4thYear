@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/models.dart';
+import '../../core/theme.dart';
 import '../auth/auth_controller.dart';
 
 class RoutesScreen extends StatefulWidget {
@@ -16,93 +17,66 @@ class RoutesScreen extends StatefulWidget {
 
 class _RoutesScreenState extends State<RoutesScreen> {
   final _mapController = MapController();
-  final _manualRouteNameController = TextEditingController(text: 'Manual Campus Route');
-  final _startController = TextEditingController(text: 'CMU Main Gate');
-  final _distanceController = TextEditingController(text: '5');
-  final _routeTypeController = TextEditingController(text: 'loop');
-  final _environmentController = TextEditingController(text: 'park');
+  final _routeNameController = TextEditingController(text: 'Morning Campus Route');
 
   BaseMapData? _baseMap;
   List<ManualRouteItem> _manualRoutes = const [];
-  List<RoutePlanItem> _generatedRoutes = const [];
   List<RoutePoint> _drawnPoints = const [];
-  RoutePlanItem? _selectedGeneratedRoute;
+  ManualRouteItem? _selectedRoute;
   String? _message;
   bool _isLoading = false;
-  bool _drawMode = true;
+
+  static const _defaultCenter = LatLng(18.8059, 98.9523);
 
   @override
   void initState() {
     super.initState();
-    _loadMapStudio();
+    _load();
   }
 
   @override
   void dispose() {
-    _manualRouteNameController.dispose();
-    _startController.dispose();
-    _distanceController.dispose();
-    _routeTypeController.dispose();
-    _environmentController.dispose();
+    _routeNameController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadMapStudio() async {
+  Future<void> _load() async {
     setState(() {
       _isLoading = true;
       _message = null;
     });
     try {
       final baseMap = await widget.controller.getBaseMap();
-      final manualRoutes = widget.controller.isAuthenticated ? await widget.controller.getManualRoutes() : const <ManualRouteItem>[];
-      final generatedRoutes = widget.controller.isAuthenticated ? await widget.controller.getRoutes() : const <RoutePlanItem>[];
+      final manualRoutes = widget.controller.isAuthenticated
+          ? await widget.controller.getManualRoutes()
+          : const <ManualRouteItem>[];
       if (!mounted) return;
       setState(() {
         _baseMap = baseMap;
         _manualRoutes = manualRoutes;
-        _generatedRoutes = generatedRoutes;
-        _selectedGeneratedRoute = generatedRoutes.isNotEmpty ? generatedRoutes.first : null;
       });
-      _moveToCenter();
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _message = '$error';
-      });
+      setState(() => _message = '$error');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _moveToCenter() {
-    final map = _baseMap;
-    if (map == null || map.nodes.isEmpty) return;
-    final first = map.nodes.first;
-    _mapController.move(LatLng(first.lat, first.lng), 14);
-  }
-
   void _handleMapTap(TapPosition _, LatLng point) {
-    if (!_drawMode) return;
+    if (!widget.controller.isAuthenticated) {
+      setState(() => _message = 'Sign in to draw and save routes.');
+      return;
+    }
     setState(() {
       _drawnPoints = [..._drawnPoints, RoutePoint(lat: point.latitude, lng: point.longitude)];
+      _selectedRoute = null;
     });
   }
 
-  void _clearDrawnRoute() {
-    setState(() {
-      _drawnPoints = const [];
-    });
-  }
-
-  Future<void> _saveManualRoute() async {
+  Future<void> _saveRoute() async {
     if (_drawnPoints.length < 2) {
-      setState(() {
-        _message = 'Add at least two points before saving a manual route.';
-      });
+      setState(() => _message = 'Add at least two points on the map.');
       return;
     }
     setState(() {
@@ -111,113 +85,54 @@ class _RoutesScreenState extends State<RoutesScreen> {
     });
     try {
       await widget.controller.createManualRoute(
-        name: _manualRouteNameController.text.trim(),
+        name: _routeNameController.text.trim(),
         points: _drawnPoints,
       );
-      if (!mounted) return;
-      setState(() {
-        _drawnPoints = const [];
-      });
-      await _loadMapStudio();
+      setState(() => _drawnPoints = const []);
+      await _load();
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _message = '$error';
-      });
+      setState(() => _message = '$error');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _dropHazardMarker() async {
-    if (_drawnPoints.isEmpty) {
-      setState(() {
-        _message = 'Tap the map to choose a position for a hazard marker first.';
-      });
-      return;
-    }
-    final point = _drawnPoints.last;
-    setState(() {
-      _isLoading = true;
-      _message = null;
-    });
+  Future<void> _deleteRoute(ManualRouteItem route) async {
+    setState(() => _isLoading = true);
     try {
-      await widget.controller.createMarker(
-        markerType: 'unsafe_crossing',
-        severity: 3,
-        lat: point.lat,
-        lng: point.lng,
-        note: 'Added from manual draw mode',
-      );
-      await _loadMapStudio();
+      await widget.controller.deleteManualRoute(route.id);
+      if (_selectedRoute?.id == route.id) {
+        _selectedRoute = null;
+      }
+      await _load();
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _message = '$error';
-      });
+      setState(() => _message = '$error');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _generateRoute() async {
-    setState(() {
-      _isLoading = true;
-      _message = null;
-    });
-    try {
-      final route = await widget.controller.generateRoute(
-        startLabel: _startController.text.trim(),
-        targetDistanceKm: double.tryParse(_distanceController.text.trim()) ?? 5,
-        routeType: _routeTypeController.text.trim(),
-        environment: _environmentController.text.trim(),
-      );
-      if (!mounted) return;
-      setState(() {
-        _selectedGeneratedRoute = route;
-      });
-      await _loadMapStudio();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _message = '$error';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+  List<LatLng> _polylinePoints(List<RoutePoint> points) {
+    return points.map((point) => LatLng(point.lat, point.lng)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final map = _baseMap;
-    final drawnPolyline = _drawnPoints.map((point) => LatLng(point.lat, point.lng)).toList();
-    final selectedGeneratedPolyline = _selectedGeneratedRoute?.points
-            .map((point) => LatLng(point.lat, point.lng))
-            .toList() ??
-        const <LatLng>[];
+    final center = map != null && map.nodes.isNotEmpty
+        ? LatLng(map.nodes.first.lat, map.nodes.first.lng)
+        : _defaultCenter;
 
     final edgePolylines = map?.edges
             .map(
               (edge) => Polyline(
-                points: edge.points.map((point) => LatLng(point.lat, point.lng)).toList(),
-                strokeWidth: edge.speedLimitKph >= 60 ? 4.5 : 3.0,
-                color: edge.riskScore >= 0.8
-                    ? const Color(0xFFD95D39)
-                    : edge.riskScore >= 0.5
-                        ? const Color(0xFFF4A261)
-                        : const Color(0xFF6BAA75),
+                points: _polylinePoints(edge.points),
+                strokeWidth: 3,
+                color: edge.riskScore >= 0.7
+                    ? RunnaColors.warning.withValues(alpha: 0.8)
+                    : RunnaColors.accent.withValues(alpha: 0.7),
               ),
             )
             .toList() ??
@@ -227,67 +142,33 @@ class _RoutesScreenState extends State<RoutesScreen> {
             .map(
               (marker) => Marker(
                 point: LatLng(marker.lat, marker.lng),
-                width: 36,
-                height: 36,
-                child: const _MapPin(
-                  color: Color(0xFFD95D39),
-                  icon: Icons.warning_amber_rounded,
-                ),
+                width: 34,
+                height: 34,
+                child: const _PinIcon(color: RunnaColors.danger, icon: Icons.warning_amber_rounded),
               ),
             )
             .toList() ??
         const <Marker>[];
 
+    final selectedPolyline = _selectedRoute != null ? _polylinePoints(_selectedRoute!.points) : const <LatLng>[];
+    final drawnPolyline = _polylinePoints(_drawnPoints);
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('Map Studio', style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              ChoiceChip(
-                label: const Text('Manual draw'),
-                selected: _drawMode,
-                onSelected: (_) => setState(() => _drawMode = true),
-              ),
-              ChoiceChip(
-                label: const Text('Generated route'),
-                selected: !_drawMode,
-                onSelected: (_) => setState(() => _drawMode = false),
-              ),
-              FilledButton.tonal(
-                onPressed: _isLoading ? null : _loadMapStudio,
-                child: const Text('Refresh map'),
-              ),
-            ],
-          ),
-        ),
+        const SectionTitle('Routes', subtitle: 'Draw, save, and reuse custom running routes'),
         const SizedBox(height: 16),
         Container(
-          height: 420,
+          height: 360,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x12000000),
-                blurRadius: 24,
-                offset: Offset(0, 10),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: RunnaColors.muted.withValues(alpha: 0.15)),
           ),
           child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: LatLng(map?.nodes.first.lat ?? 18.8059, map?.nodes.first.lng ?? 98.9523),
+              initialCenter: center,
               initialZoom: 14,
               onTap: _handleMapTap,
             ),
@@ -297,24 +178,16 @@ class _RoutesScreenState extends State<RoutesScreen> {
                 userAgentPackageName: 'runna_mobile',
               ),
               if (edgePolylines.isNotEmpty) PolylineLayer(polylines: edgePolylines),
-              if (selectedGeneratedPolyline.isNotEmpty)
+              if (selectedPolyline.isNotEmpty)
                 PolylineLayer(
                   polylines: [
-                    Polyline(
-                      points: selectedGeneratedPolyline,
-                      strokeWidth: 6,
-                      color: const Color(0xFF23402B),
-                    ),
+                    Polyline(points: selectedPolyline, strokeWidth: 5, color: RunnaColors.primaryDark),
                   ],
                 ),
               if (drawnPolyline.isNotEmpty)
                 PolylineLayer(
                   polylines: [
-                    Polyline(
-                      points: drawnPolyline,
-                      strokeWidth: 5,
-                      color: const Color(0xFF1F7A4C),
-                    ),
+                    Polyline(points: drawnPolyline, strokeWidth: 5, color: RunnaColors.primary),
                   ],
                 ),
               MarkerLayer(
@@ -323,9 +196,9 @@ class _RoutesScreenState extends State<RoutesScreen> {
                   ..._drawnPoints.map(
                     (point) => Marker(
                       point: LatLng(point.lat, point.lng),
-                      width: 24,
-                      height: 24,
-                      child: const _MapPin(color: Color(0xFF1F7A4C), icon: Icons.circle),
+                      width: 22,
+                      height: 22,
+                      child: const _PinIcon(color: RunnaColors.primary, icon: Icons.circle),
                     ),
                   ),
                 ],
@@ -337,40 +210,66 @@ class _RoutesScreenState extends State<RoutesScreen> {
         if (_message != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Text(_message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(_message!, style: const TextStyle(color: RunnaColors.danger)),
           ),
-        if (_drawMode)
-          _ManualDrawPanel(
-            nameController: _manualRouteNameController,
-            pointCount: _drawnPoints.length,
-            isLoading: _isLoading,
-            onClear: _clearDrawnRoute,
-            onSave: _saveManualRoute,
-            onDropMarker: _dropHazardMarker,
-          )
-        else
-          _GeneratedRoutePanel(
-            startController: _startController,
-            distanceController: _distanceController,
-            routeTypeController: _routeTypeController,
-            environmentController: _environmentController,
-            generatedRoutes: _generatedRoutes,
-            selectedRoute: _selectedGeneratedRoute,
-            isLoading: _isLoading,
-            onGenerate: _generateRoute,
-            onSelectRoute: (route) => setState(() => _selectedGeneratedRoute = route),
+        RunnaCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _routeNameController,
+                enabled: widget.controller.isAuthenticated,
+                decoration: const InputDecoration(labelText: 'Route name'),
+              ),
+              const SizedBox(height: 12),
+              Text('Points on map: ${_drawnPoints.length}'),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  FilledButton(
+                    onPressed: _isLoading || !widget.controller.isAuthenticated ? null : _saveRoute,
+                    child: const Text('Save route'),
+                  ),
+                  OutlinedButton(
+                    onPressed: _isLoading ? null : () => setState(() => _drawnPoints = const []),
+                    child: const Text('Clear points'),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: _isLoading ? null : _load,
+                    child: const Text('Refresh'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        const SizedBox(height: 16),
-        Text('Saved manual routes', style: Theme.of(context).textTheme.titleLarge),
+        ),
+        const SizedBox(height: 20),
+        const SectionTitle('Saved routes'),
         const SizedBox(height: 12),
-        if (_manualRoutes.isEmpty)
-          const Text('No manual routes saved yet.')
+        if (!widget.controller.isAuthenticated)
+          const RunnaCard(child: Text('Sign in to create and save your own routes.'))
+        else if (_manualRoutes.isEmpty)
+          const RunnaCard(child: Text('No saved routes yet. Tap the map to start drawing.'))
         else
           ..._manualRoutes.map(
-            (route) => Card(
-              child: ListTile(
-                title: Text(route.name),
-                subtitle: Text('Distance: ${route.distanceKm.toStringAsFixed(2)} km • Points: ${route.points.length}'),
+            (route) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: RunnaCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(route.name),
+                  subtitle: Text('${route.distanceKm.toStringAsFixed(2)} km • ${route.points.length} points'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: _isLoading ? null : () => _deleteRoute(route),
+                  ),
+                  onTap: () => setState(() {
+                    _selectedRoute = route;
+                    _drawnPoints = const [];
+                  }),
+                ),
               ),
             ),
           ),
@@ -379,178 +278,8 @@ class _RoutesScreenState extends State<RoutesScreen> {
   }
 }
 
-class _ManualDrawPanel extends StatelessWidget {
-  const _ManualDrawPanel({
-    required this.nameController,
-    required this.pointCount,
-    required this.isLoading,
-    required this.onClear,
-    required this.onSave,
-    required this.onDropMarker,
-  });
-
-  final TextEditingController nameController;
-  final int pointCount;
-  final bool isLoading;
-  final VoidCallback onClear;
-  final VoidCallback onSave;
-  final VoidCallback onDropMarker;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Manual draw route', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text('Tap on the map to add route points. Use this when auto-generation is not enough.'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: nameController,
-            decoration: const InputDecoration(labelText: 'Manual route name'),
-          ),
-          const SizedBox(height: 12),
-          Text('Current points: $pointCount'),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton(
-                onPressed: isLoading ? null : onSave,
-                child: const Text('Save manual route'),
-              ),
-              FilledButton.tonal(
-                onPressed: isLoading ? null : onDropMarker,
-                child: const Text('Drop hazard marker'),
-              ),
-              OutlinedButton(
-                onPressed: isLoading ? null : onClear,
-                child: const Text('Clear points'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GeneratedRoutePanel extends StatelessWidget {
-  const _GeneratedRoutePanel({
-    required this.startController,
-    required this.distanceController,
-    required this.routeTypeController,
-    required this.environmentController,
-    required this.generatedRoutes,
-    required this.selectedRoute,
-    required this.isLoading,
-    required this.onGenerate,
-    required this.onSelectRoute,
-  });
-
-  final TextEditingController startController;
-  final TextEditingController distanceController;
-  final TextEditingController routeTypeController;
-  final TextEditingController environmentController;
-  final List<RoutePlanItem> generatedRoutes;
-  final RoutePlanItem? selectedRoute;
-  final bool isLoading;
-  final VoidCallback onGenerate;
-  final ValueChanged<RoutePlanItem> onSelectRoute;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Generated route', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text('Generate a safer route from the road graph and compare the result on the map.'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: startController,
-            decoration: const InputDecoration(labelText: 'Start location label'),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: distanceController,
-                  decoration: const InputDecoration(labelText: 'Distance (km)'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: routeTypeController,
-                  decoration: const InputDecoration(labelText: 'Route type'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: environmentController,
-            decoration: const InputDecoration(labelText: 'Environment'),
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: isLoading ? null : onGenerate,
-            child: const Text('Generate route'),
-          ),
-          const SizedBox(height: 16),
-          if (selectedRoute != null)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4EFE8),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Text(
-                '${selectedRoute!.summary}\nSafety: ${selectedRoute!.safetyLevel} • ETA: ${selectedRoute!.estimatedMinutes} min',
-              ),
-            ),
-          const SizedBox(height: 16),
-          if (generatedRoutes.isEmpty)
-            const Text('No generated routes yet.')
-          else
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: generatedRoutes.map((route) {
-                final selected = selectedRoute?.id == route.id;
-                return ChoiceChip(
-                  label: Text('${route.targetDistanceKm.toStringAsFixed(1)} km ${route.routeType}'),
-                  selected: selected,
-                  onSelected: (_) => onSelectRoute(route),
-                );
-              }).toList(),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MapPin extends StatelessWidget {
-  const _MapPin({
-    required this.color,
-    required this.icon,
-  });
+class _PinIcon extends StatelessWidget {
+  const _PinIcon({required this.color, required this.icon});
 
   final Color color;
   final IconData icon;
@@ -558,17 +287,7 @@ class _MapPin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
       child: Icon(icon, color: Colors.white, size: 16),
     );
   }

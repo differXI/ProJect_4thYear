@@ -12,7 +12,7 @@ os.environ["DATABASE_URL"] = "sqlite://"
 from app.api.deps import get_db
 from app.db.base import Base
 from app.main import app
-from app.models import EmergencyContact, HazardMarker, ManualRoute, MapEdge, MapNode, Role, RoutePlan, Run, User
+from app.models import HazardMarker, ManualRoute, MapEdge, MapNode, PinValidation, Role, RoutePlan, Run, User
 from app.services.security import hash_password
 
 SQLALCHEMY_DATABASE_URL = "sqlite://"

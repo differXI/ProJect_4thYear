@@ -34,6 +34,10 @@ class HazardMarkerCreate(BaseModel):
     note: str | None = Field(default=None, max_length=255)
 
 
+class HazardMarkerValidate(BaseModel):
+    confirmed: bool
+
+
 class HazardMarkerResponse(BaseModel):
     id: int
     user_id: int
@@ -43,6 +47,9 @@ class HazardMarkerResponse(BaseModel):
     lng: float
     note: str | None
     status: str
+    confirm_count: int
+    dismiss_count: int
+    expires_at: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,4 +58,3 @@ class BaseMapResponse(BaseModel):
     nodes: list[MapNodeResponse]
     edges: list[MapEdgeResponse]
     markers: list[HazardMarkerResponse]
-

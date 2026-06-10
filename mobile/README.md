@@ -1,29 +1,27 @@
 # Runna Mobile
 
-Flutter app for the Runna project.
+Flutter client for the Runna senior project.
 
-## Current status
-
-This first implementation pass includes:
-
-- real Flutter project scaffolding
-- backend health check integration
-- registration screen
-- login screen
-- profile fetch after login
-- base map rendering
-- manual route drawing
-- generated route preview
-- hazard marker placement
-
-## Run locally
+## Run
 
 ```powershell
 flutter pub get
-flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8000/api
+flutter run
 ```
 
-## Notes
+## Configure API
 
-- Android tooling is not installed yet, so Android builds are not verified in this session.
-- The app now targets GIS routing flows rather than social/chat features.
+Default: `http://127.0.0.1:8000/api`
+
+```powershell
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
+```
+
+## Screens
+
+- **Home** — overview and quick actions
+- **Routes** — draw and save manual routes
+- **Runs** — start/finish runs, view AI insights
+- **Hazards** — report and validate community pins
+- **Account** — sign in / register / sign out
+- **Admin** — visible for admin users only
