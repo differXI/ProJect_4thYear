@@ -1,0 +1,31 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          cd mobile
+          flutter pub get
+          
+      - name: Build APK
+        run: |
+          cd mobile
+          flutter build apk --dart-define=API_BASE_URL=https://runna-backend.onrender.com/api
+          
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: runna-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
