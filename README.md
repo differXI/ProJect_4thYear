@@ -1,98 +1,80 @@
 # Runna
 
-Runna is a route-centric running platform built for the CMU Software Engineering senior project. It combines manual route creation, collaborative hazard reporting, run tracking, and AI-based performance analysis.
+Runna is a route-centric running application that combines manual route creation, collaborative hazard reporting, and AI-based running performance analysis.
 
-## Stack
+## Developers
 
-- **Mobile:** Flutter (Android / iOS / Web)
-- **Backend:** FastAPI
-- **Database:** PostgreSQL + PostGIS
-- **Maps:** OpenStreetMap tiles
-- **AI:** Gemini API (optional; rule-based fallback included)
+- Wanikkasit 652115043  
+- Thanachai 662115020  
 
-## Features
+## Project Overview
 
-| Feature | Description |
-|--------|-------------|
-| Authentication | Register, login, logout, RBAC (guest / member / admin) |
-| Manual routes | Draw and save custom routes on an interactive map |
-| Hazard pins | Report, view, confirm, and auto-expire community hazards |
-| Run tracking | Distance, duration, pace, step count |
-| AI analysis | Post-run insight, reasoning, and recommendations |
-| Admin dashboard | User management, stats, hazard moderation |
+Runna is a mobile application designed to improve running experience by combining:
 
-## Quick start
+- Manual route creation on map
+- Real-time hazard reporting system
+- Running activity tracking
+- AI-based performance analysis
+- 
+## Deployment
 
-### 1. Environment
+Frontend:
+- Android APK available for installation
+- Build output: `/build/app/outputs/flutter-apk/app-release.apk`
 
-```powershell
-Copy-Item .env.example .env
-```
+Backend:
+- Deployed API server: https://your-backend-deploy-link
 
-Optional: set `GEMINI_API_KEY` in `.env` for Gemini-powered summaries.
+Database:
+- Hosted PostgreSQL instance
 
-### 2. Start backend + database
+## System Architecture
 
-```powershell
-docker compose up --build
-```
+### Frontend
+Flutter mobile application  
+Repository: https://github.com/your-frontend-repo
 
-API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+### Backend
+FastAPI service for system logic and APIs  
+Repository: https://github.com/your-backend-repo
 
-Migrations run automatically on container start.
+### Database
+PostgreSQL + PostGIS
 
-### 3. Run the mobile app
+### API Documentation
+REST API documentation (Swagger / OpenAPI):  
+https://your-api-docs-link
 
-```powershell
-cd mobile
-flutter pub get
-flutter run
-```
+### Version Control
+GitHub Organization / Repository:  
+https://github.com/your-project-org
 
-**Android emulator API URL:**
+## Main Features
 
-```powershell
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
-```
+- User authentication and role management
+- Manual route creation and editing on map
+- Real-time running tracking (GPS-based)
+- Collaborative hazard pin system
+- AI-generated running insights and recommendations
+- Admin management system
 
-**Physical device (replace with your PC IP):**
+## Technologies Used
 
-```powershell
-flutter run --dart-define=API_BASE_URL=http://192.168.1.100:8000/api
-```
+Frontend:
+- Flutter
 
-## Default accounts
+Backend:
+- FastAPI
+- Python
 
-| Role | Email / Username | Password |
-|------|------------------|----------|
-| Admin | `admin@runna.local` / `runna_admin` | `admin1234` |
-| Member | Register in the app | Your choice |
+Database:
+- PostgreSQL
+- PostGIS
 
-Guests can browse the map and hazard pins without signing in.
+External APIs:
+- Google Maps Platform
+- Gemini API
 
-## Project structure
+## Project Goal
 
-```
-backend/          FastAPI API, services, migrations
-mobile/           Flutter app
-docs/             Architecture notes
-docker-compose.yml
-```
-
-## API overview
-
-- `POST /api/auth/register` — create member account
-- `POST /api/auth/login` — obtain JWT
-- `GET /api/map/base` — map nodes, edges, hazard pins
-- `POST /api/map/manual-routes` — save drawn route
-- `POST /api/map/markers` — create hazard pin
-- `POST /api/map/markers/{id}/validate` — confirm or dismiss pin
-- `POST /api/runs/start` — start run session
-- `POST /api/runs/{id}/finish` — finish run + AI analysis
-- `GET /api/admin/stats` — admin dashboard stats
-
-## Notes
-
-- Hazard pins expire after `PIN_EXPIRY_HOURS` (default 24) unless confirmed by nearby users.
-- AI analysis works without Gemini using built-in rule-based logic.
-- Map seed data centers on Chiang Mai University for demo use.
+To build an intelligent running system that integrates performance tracking, environmental awareness, and AI-based analysis into a single mobile platform.
