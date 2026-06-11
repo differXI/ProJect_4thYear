@@ -147,9 +147,9 @@ class _RunsScreenState extends State<RunsScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.controller.isAuthenticated) {
-      return const ListView(
-        padding: EdgeInsets.all(20),
-        children: [
+      return ListView(
+        padding: const EdgeInsets.all(20),
+        children: const [
           SectionTitle('Runs', subtitle: 'Track activity and receive AI performance insights'),
           SizedBox(height: 16),
           RunnaCard(child: Text('Sign in to start runs and view AI summaries.')),

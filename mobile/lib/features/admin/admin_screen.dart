@@ -79,9 +79,9 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     if (!widget.controller.isAdmin) {
-      return const ListView(
-        padding: EdgeInsets.all(20),
-        children: [
+      return ListView(
+        padding: const EdgeInsets.all(20),
+        children: const [
           SectionTitle('Admin', subtitle: 'Platform monitoring and moderation'),
           SizedBox(height: 16),
           RunnaCard(child: Text('Admin access required.')),
