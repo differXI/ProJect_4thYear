@@ -101,21 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icons.admin_panel_settings_outlined,
               onTap: () => widget.onNavigate(4),
             ),
-          const SizedBox(height: 20),
-          const SectionTitle('Project features', subtitle: 'Aligned with your senior project proposal'),
-          const SizedBox(height: 12),
-          const RunnaCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _FeatureLine('Manual route creation on interactive map'),
-                _FeatureLine('Collaborative hazard pin system with validation'),
-                _FeatureLine('Run tracking: distance, duration, pace, steps'),
-                _FeatureLine('AI performance summary after each run'),
-                _FeatureLine('Role-based access: guest, member, admin'),
-              ],
-            ),
-          ),
         ],
       ),
     );

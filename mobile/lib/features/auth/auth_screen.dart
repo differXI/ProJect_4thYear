@@ -137,18 +137,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          RunnaCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Demo admin account'),
-                const SizedBox(height: 8),
-                const Text('Email: admin@runna.local'),
-                const Text('Password: admin1234'),
-              ],
-            ),
-          ),
         ],
       );
     }
@@ -189,7 +177,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 430,
+          height: 500,
           child: TabBarView(
             controller: _tabController,
             children: [
@@ -251,18 +239,20 @@ class _AuthForm extends StatelessWidget {
     return RunnaCard(
       child: Form(
         key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            ...fields.expand((field) => [field, const SizedBox(height: 12)]),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(onPressed: onSubmit, child: Text(buttonLabel)),
-            ),
-          ],
+        child: SingleChildScrollView( //  เพิ่มตัวนี้เข้าไปครอบแทน Column หรือครอบใน Form
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              ...fields.expand((field) => [field, const SizedBox(height: 12)]),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(onPressed: onSubmit, child: Text(buttonLabel)),
+              ),
+            ],
+          ),
         ),
       ),
     );
