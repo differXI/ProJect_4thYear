@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,3 +20,21 @@ class ManualRoute(TimestampMixin, Base):
 
     user = relationship("User", back_populates="manual_routes")
 
+    @property
+    def validation(self) -> dict[str, int | str]:
+        if not self.validation_json:
+            return {
+                "risky_edges": 0,
+                "forbidden_edges": 0,
+                "snapped_points": 0,
+                "total_warnings": "",
+            }
+        try:
+            return json.loads(self.validation_json)
+        except json.JSONDecodeError:
+            return {
+                "risky_edges": 0,
+                "forbidden_edges": 0,
+                "snapped_points": 0,
+                "total_warnings": self.validation_json,
+            }

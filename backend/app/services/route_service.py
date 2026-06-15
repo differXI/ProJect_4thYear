@@ -1,5 +1,5 @@
 import json
-from math import ceil
+from math import ceil, sqrt
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,6 +29,7 @@ class RouteService:
         if not start_node:
             # Fallback to dummy
             path = self._build_preview_path(start_lat, start_lng, payload.target_distance_km, payload.route_type)
+            total_dist = target_distance
             avg_risk = 0.5
         else:
             # Dijkstra shortest path with risk weighting
@@ -67,6 +68,22 @@ class RouteService:
         self.db.refresh(route_plan)
         return route_plan
 
+    def _build_preview_path(self, lat: float, lng: float, distance_km: float, route_type: str) -> list[dict[str, float]]:
+        offset = max(distance_km, 0.5) / 111 / 4
+        if route_type.lower() in {"loop", "circuit"}:
+            return [
+                {"lat": lat, "lng": lng},
+                {"lat": lat + offset, "lng": lng + offset},
+                {"lat": lat, "lng": lng + offset * 2},
+                {"lat": lat - offset, "lng": lng + offset},
+                {"lat": lat, "lng": lng},
+            ]
+        return [
+            {"lat": lat, "lng": lng},
+            {"lat": lat + offset, "lng": lng + offset},
+            {"lat": lat + offset * 2, "lng": lng + offset * 2},
+        ]
+
     def list_routes(self, user_id: int) -> list[RoutePlan]:
         statement = select(RoutePlan).where(RoutePlan.user_id == user_id).order_by(RoutePlan.created_at.desc())
         return list(self.db.scalars(statement).all())
@@ -74,6 +91,15 @@ class RouteService:
     def _ensure_map_loaded(self):
         from app.services.map_service import MapService
         MapService(self.db).ensure_real_map()
+
+    def _resolve_anchor(self, label: str) -> tuple[float, float]:
+        normalized = label.strip().lower()
+        known_locations = {
+            "cmu main gate": (18.8059, 98.9523),
+            "chiang mai university": (18.8059, 98.9523),
+            "campus": (18.8059, 98.9523),
+        }
+        return known_locations.get(normalized, (18.8059, 98.9523))
 
     def _find_nearest_node(self, lat: float, lng: float, max_dist: float = 0.01) -> MapNode | None:
         nodes = self.db.scalars(select(MapNode)).all()
@@ -117,7 +143,8 @@ class RouteService:
             curr_dist += cost / (1 + risk_mult)  # Approx
             
             if curr_dist >= target_dist * 0.9:  # Close enough
-                avg_risk = sum(self._get_path_risk(path)) / len(path)
+                path_risks = self._get_path_risk(path)
+                avg_risk = sum(path_risks) / len(path_risks) if path_risks else 0.5
                 return path, curr_dist, avg_risk
             
             for neighbor, dist_m, risk in graph.get(node, []):

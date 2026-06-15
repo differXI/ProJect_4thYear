@@ -33,7 +33,6 @@ class UserProfile {
     required this.email,
     required this.isActive,
     required this.roleId,
-    required this.roleName,
     this.province,
   });
 
@@ -45,10 +44,6 @@ class UserProfile {
   final String? province;
   final bool isActive;
   final int roleId;
-  final String roleName;
-
-  bool get isAdmin => roleName == 'admin';
-  String get fullName => '$firstName $lastName';
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
@@ -60,7 +55,6 @@ class UserProfile {
       province: json['province'] as String?,
       isActive: json['is_active'] as bool,
       roleId: json['role_id'] as int,
-      roleName: json['role_name'] as String? ?? 'member',
     );
   }
 }
@@ -72,53 +66,130 @@ class RunItem {
     required this.status,
     required this.distanceKm,
     required this.durationSeconds,
-    required this.stepCount,
     this.manualRouteId,
-    this.avgPaceMinPerKm,
+    this.routePlanId,
     this.notes,
-    this.aiInsight,
-    this.aiReasoning,
-    this.aiRecommendations,
   });
 
   final int id;
   final int userId;
   final int? manualRouteId;
+  final int? routePlanId;
   final String status;
   final double distanceKm;
   final int durationSeconds;
-  final int stepCount;
-  final double? avgPaceMinPerKm;
   final String? notes;
-  final String? aiInsight;
-  final String? aiReasoning;
-  final String? aiRecommendations;
 
   factory RunItem.fromJson(Map<String, dynamic> json) {
     return RunItem(
       id: json['id'] as int,
       userId: json['user_id'] as int,
       manualRouteId: json['manual_route_id'] as int?,
+      routePlanId: json['route_plan_id'] as int?,
       status: json['status'] as String,
       distanceKm: (json['distance_km'] as num).toDouble(),
       durationSeconds: json['duration_seconds'] as int,
-      stepCount: json['step_count'] as int? ?? 0,
-      avgPaceMinPerKm: (json['avg_pace_min_per_km'] as num?)?.toDouble(),
       notes: json['notes'] as String?,
-      aiInsight: json['ai_insight'] as String?,
-      aiReasoning: json['ai_reasoning'] as String?,
-      aiRecommendations: json['ai_recommendations'] as String?,
     );
   }
 }
 
+class RunPointUpload {
+  const RunPointUpload({
+    required this.lat,
+    required this.lng,
+    this.accuracyM,
+    this.speedMps,
+    this.headingDeg,
+    this.recordedAt,
+  });
+
+  final double lat;
+  final double lng;
+  final double? accuracyM;
+  final double? speedMps;
+  final double? headingDeg;
+  final DateTime? recordedAt;
+
+  Map<String, dynamic> toJson() => {
+        'lat': lat,
+        'lng': lng,
+        'accuracy_m': accuracyM,
+        'speed_mps': speedMps,
+        'heading_deg': headingDeg,
+        'recorded_at': recordedAt?.toUtc().toIso8601String(),
+      };
+}
+
 class RoutePoint {
-  const RoutePoint({required this.lat, required this.lng});
+  const RoutePoint({
+    required this.lat,
+    required this.lng,
+  });
 
   final double lat;
   final double lng;
 
   Map<String, dynamic> toJson() => {'lat': lat, 'lng': lng};
+}
+
+class RoutePlanItem {
+  const RoutePlanItem({
+    required this.id,
+    required this.userId,
+    required this.startLabel,
+    required this.targetDistanceKm,
+    required this.routeType,
+    required this.environment,
+    required this.centerLat,
+    required this.centerLng,
+    required this.pathJson,
+    required this.estimatedMinutes,
+    required this.safetyLevel,
+    required this.summary,
+  });
+
+  final int id;
+  final int userId;
+  final String startLabel;
+  final double targetDistanceKm;
+  final String routeType;
+  final String environment;
+  final double centerLat;
+  final double centerLng;
+  final String pathJson;
+  final int estimatedMinutes;
+  final String safetyLevel;
+  final String summary;
+
+  factory RoutePlanItem.fromJson(Map<String, dynamic> json) {
+    return RoutePlanItem(
+      id: json['id'] as int,
+      userId: json['user_id'] as int,
+      startLabel: json['start_label'] as String,
+      targetDistanceKm: (json['target_distance_km'] as num).toDouble(),
+      routeType: json['route_type'] as String,
+      environment: json['environment'] as String,
+      centerLat: (json['center_lat'] as num).toDouble(),
+      centerLng: (json['center_lng'] as num).toDouble(),
+      pathJson: json['path_json'] as String,
+      estimatedMinutes: json['estimated_minutes'] as int,
+      safetyLevel: json['safety_level'] as String,
+      summary: json['summary'] as String,
+    );
+  }
+
+  List<RoutePoint> get points {
+    final decoded = jsonDecode(pathJson) as List<dynamic>;
+    return decoded
+        .map(
+          (item) => RoutePoint(
+            lat: (item['lat'] as num).toDouble(),
+            lng: (item['lng'] as num).toDouble(),
+          ),
+        )
+        .toList();
+  }
 }
 
 class MapNodeItem {
@@ -150,21 +221,39 @@ class MapNodeItem {
 class MapEdgeItem {
   const MapEdgeItem({
     required this.id,
+    required this.startNodeId,
+    required this.endNodeId,
     required this.roadName,
+    required this.roadClass,
+    required this.speedLimitKph,
+    required this.lengthM,
     required this.riskScore,
+    required this.isForbidden,
     required this.geometryJson,
   });
 
   final int id;
+  final int startNodeId;
+  final int endNodeId;
   final String roadName;
+  final String roadClass;
+  final double speedLimitKph;
+  final double lengthM;
   final double riskScore;
+  final bool isForbidden;
   final String geometryJson;
 
   factory MapEdgeItem.fromJson(Map<String, dynamic> json) {
     return MapEdgeItem(
       id: json['id'] as int,
+      startNodeId: json['start_node_id'] as int,
+      endNodeId: json['end_node_id'] as int,
       roadName: json['road_name'] as String,
+      roadClass: json['road_class'] as String,
+      speedLimitKph: (json['speed_limit_kph'] as num).toDouble(),
+      lengthM: (json['length_m'] as num).toDouble(),
       riskScore: (json['risk_score'] as num).toDouble(),
+      isForbidden: json['is_forbidden'] as bool,
       geometryJson: json['geometry_json'] as String,
     );
   }
@@ -192,9 +281,6 @@ class HazardMarkerItem {
     required this.lng,
     required this.note,
     required this.status,
-    required this.confirmCount,
-    required this.dismissCount,
-    this.expiresAt,
   });
 
   final int id;
@@ -205,9 +291,6 @@ class HazardMarkerItem {
   final double lng;
   final String? note;
   final String status;
-  final int confirmCount;
-  final int dismissCount;
-  final String? expiresAt;
 
   factory HazardMarkerItem.fromJson(Map<String, dynamic> json) {
     return HazardMarkerItem(
@@ -219,13 +302,8 @@ class HazardMarkerItem {
       lng: (json['lng'] as num).toDouble(),
       note: json['note'] as String?,
       status: json['status'] as String,
-      confirmCount: json['confirm_count'] as int? ?? 0,
-      dismissCount: json['dismiss_count'] as int? ?? 0,
-      expiresAt: json['expires_at'] as String?,
     );
   }
-
-  String get categoryLabel => markerType.replaceAll('_', ' ');
 }
 
 class BaseMapData {
@@ -240,16 +318,13 @@ class BaseMapData {
   final List<HazardMarkerItem> markers;
 
   factory BaseMapData.fromJson(Map<String, dynamic> json) {
+    final nodesJson = json['nodes'] as List<dynamic>;
+    final edgesJson = json['edges'] as List<dynamic>;
+    final markersJson = json['markers'] as List<dynamic>;
     return BaseMapData(
-      nodes: (json['nodes'] as List<dynamic>)
-          .map((item) => MapNodeItem.fromJson(item as Map<String, dynamic>))
-          .toList(),
-      edges: (json['edges'] as List<dynamic>)
-          .map((item) => MapEdgeItem.fromJson(item as Map<String, dynamic>))
-          .toList(),
-      markers: (json['markers'] as List<dynamic>)
-          .map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>))
-          .toList(),
+      nodes: nodesJson.map((item) => MapNodeItem.fromJson(item as Map<String, dynamic>)).toList(),
+      edges: edgesJson.map((item) => MapEdgeItem.fromJson(item as Map<String, dynamic>)).toList(),
+      markers: markersJson.map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>)).toList(),
     );
   }
 }
@@ -289,75 +364,5 @@ class ManualRouteItem {
           ),
         )
         .toList();
-  }
-}
-
-class AdminStats {
-  const AdminStats({
-    required this.totalUsers,
-    required this.activeUsers,
-    required this.totalRuns,
-    required this.finishedRuns,
-    required this.activePins,
-    required this.expiredPins,
-    required this.totalRoutes,
-  });
-
-  final int totalUsers;
-  final int activeUsers;
-  final int totalRuns;
-  final int finishedRuns;
-  final int activePins;
-  final int expiredPins;
-  final int totalRoutes;
-
-  factory AdminStats.fromJson(Map<String, dynamic> json) {
-    return AdminStats(
-      totalUsers: json['total_users'] as int,
-      activeUsers: json['active_users'] as int,
-      totalRuns: json['total_runs'] as int,
-      finishedRuns: json['finished_runs'] as int,
-      activePins: json['active_pins'] as int,
-      expiredPins: json['expired_pins'] as int,
-      totalRoutes: json['total_routes'] as int,
-    );
-  }
-}
-
-class AdminUserItem {
-  const AdminUserItem({
-    required this.id,
-    required this.firstName,
-    required this.lastName,
-    required this.username,
-    required this.email,
-    required this.isActive,
-    required this.roleName,
-    required this.runCount,
-    required this.pinCount,
-  });
-
-  final int id;
-  final String firstName;
-  final String lastName;
-  final String username;
-  final String email;
-  final bool isActive;
-  final String roleName;
-  final int runCount;
-  final int pinCount;
-
-  factory AdminUserItem.fromJson(Map<String, dynamic> json) {
-    return AdminUserItem(
-      id: json['id'] as int,
-      firstName: json['first_name'] as String,
-      lastName: json['last_name'] as String,
-      username: json['username'] as String,
-      email: json['email'] as String,
-      isActive: json['is_active'] as bool,
-      roleName: json['role_name'] as String,
-      runCount: json['run_count'] as int? ?? 0,
-      pinCount: json['pin_count'] as int? ?? 0,
-    );
   }
 }
