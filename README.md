@@ -26,9 +26,7 @@ Backend:
 - Deployed API server:
   https://runna-backend.onrender.com/docs
   https://runna-backend.onrender.com
-Database:
-- Hosted PostgreSQL instance
-
+  
 ## System Architecture
 
 ### Frontend
