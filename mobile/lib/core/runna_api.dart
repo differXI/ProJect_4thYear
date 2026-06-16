@@ -12,6 +12,13 @@ class RunnaApi {
 
   Uri _uri(String path) => Uri.parse('${AppConfig.apiBaseUrl}$path');
 
+  Map<String, String> _jsonHeaders([String? token]) {
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
   Future<HealthResponse> getHealth() async {
     final response = await _client.get(_uri('/health'));
     _ensureSuccess(response);
@@ -27,7 +34,7 @@ class RunnaApi {
   }) async {
     final response = await _client.post(
       _uri('/auth/register'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _jsonHeaders(),
       body: jsonEncode({
         'first_name': firstName,
         'last_name': lastName,
@@ -46,7 +53,7 @@ class RunnaApi {
   }) async {
     final response = await _client.post(
       _uri('/auth/login'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _jsonHeaders(),
       body: jsonEncode({
         'username_or_email': usernameOrEmail,
         'password': password,
@@ -57,10 +64,7 @@ class RunnaApi {
   }
 
   Future<UserProfile> getMe(String accessToken) async {
-    final response = await _client.get(
-      _uri('/me'),
-      headers: {'Authorization': 'Bearer $accessToken'},
-    );
+    final response = await _client.get(_uri('/me'), headers: _jsonHeaders(accessToken));
     _ensureSuccess(response);
     return UserProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
@@ -88,10 +92,7 @@ class RunnaApi {
   }) async {
     final response = await _client.post(
       _uri('/map/markers'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
+      headers: _jsonHeaders(accessToken),
       body: jsonEncode({
         'marker_type': markerType,
         'severity': severity,
@@ -104,10 +105,24 @@ class RunnaApi {
     return HazardMarkerItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  Future<HazardMarkerItem> validateMarker({
+    required String accessToken,
+    required int markerId,
+    required bool confirmed,
+  }) async {
+    final response = await _client.post(
+      _uri('/map/markers/$markerId/validate'),
+      headers: _jsonHeaders(accessToken),
+      body: jsonEncode({'confirmed': confirmed}),
+    );
+    _ensureSuccess(response);
+    return HazardMarkerItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
   Future<List<ManualRouteItem>> getManualRoutes(String accessToken) async {
     final response = await _client.get(
       _uri('/map/manual-routes'),
-      headers: {'Authorization': 'Bearer $accessToken'},
+      headers: _jsonHeaders(accessToken),
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
@@ -121,10 +136,7 @@ class RunnaApi {
   }) async {
     final response = await _client.post(
       _uri('/map/manual-routes'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
+      headers: _jsonHeaders(accessToken),
       body: jsonEncode({
         'name': name,
         'points': points.map((point) => point.toJson()).toList(),
@@ -134,14 +146,37 @@ class RunnaApi {
     return ManualRouteItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  Future<void> deleteManualRoute({
+    required String accessToken,
+    required int routeId,
+  }) async {
+    final response = await _client.delete(
+      _uri('/map/manual-routes/$routeId'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+  }
+
   Future<List<RunItem>> getRuns(String accessToken) async {
     final response = await _client.get(
       _uri('/runs'),
-      headers: {'Authorization': 'Bearer $accessToken'},
+      headers: _jsonHeaders(accessToken),
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
     return body.map((item) => RunItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<RunItem> getRun({
+    required String accessToken,
+    required int runId,
+  }) async {
+    final response = await _client.get(
+      _uri('/runs/$runId'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    return RunItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<RunItem> startRun({
@@ -152,10 +187,7 @@ class RunnaApi {
   }) async {
     final response = await _client.post(
       _uri('/runs/start'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
+      headers: _jsonHeaders(accessToken),
       body: jsonEncode({
         'manual_route_id': manualRouteId,
         'route_plan_id': routePlanId,
@@ -174,10 +206,7 @@ class RunnaApi {
     if (points.isEmpty) return;
     final response = await _client.post(
       _uri('/runs/$runId/points'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
+      headers: _jsonHeaders(accessToken),
       body: jsonEncode(points.map((point) => point.toJson()).toList()),
     );
     _ensureSuccess(response);
@@ -188,16 +217,15 @@ class RunnaApi {
     required int runId,
     double? distanceKm,
     int? durationSeconds,
+    int stepCount = 0,
   }) async {
     final response = await _client.post(
       _uri('/runs/$runId/finish'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
+      headers: _jsonHeaders(accessToken),
       body: jsonEncode({
         'distance_km': distanceKm,
         'duration_seconds': durationSeconds,
+        'step_count': stepCount,
       }),
     );
     _ensureSuccess(response);
@@ -207,7 +235,7 @@ class RunnaApi {
   Future<List<RoutePlanItem>> getRoutes(String accessToken) async {
     final response = await _client.get(
       _uri('/routes'),
-      headers: {'Authorization': 'Bearer $accessToken'},
+      headers: _jsonHeaders(accessToken),
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
@@ -223,10 +251,7 @@ class RunnaApi {
   }) async {
     final response = await _client.post(
       _uri('/routes/generate'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
+      headers: _jsonHeaders(accessToken),
       body: jsonEncode({
         'start_label': startLabel,
         'target_distance_km': targetDistanceKm,
@@ -238,15 +263,77 @@ class RunnaApi {
     return RoutePlanItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  Future<AdminStats> getAdminStats(String accessToken) async {
+    final response = await _client.get(
+      _uri('/admin/stats'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    return AdminStats.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<List<AdminUserItem>> getAdminUsers(String accessToken) async {
+    final response = await _client.get(
+      _uri('/admin/users'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    final body = jsonDecode(response.body) as List<dynamic>;
+    return body.map((item) => AdminUserItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<AdminUserItem> updateAdminUser({
+    required String accessToken,
+    required int userId,
+    bool? isActive,
+    String? roleName,
+  }) async {
+    final response = await _client.patch(
+      _uri('/admin/users/$userId'),
+      headers: _jsonHeaders(accessToken),
+      body: jsonEncode({
+        if (isActive != null) 'is_active': isActive,
+        if (roleName != null) 'role_name': roleName,
+      }),
+    );
+    _ensureSuccess(response);
+    return AdminUserItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<List<HazardMarkerItem>> getAdminMarkers(String accessToken) async {
+    final response = await _client.get(
+      _uri('/admin/markers'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    final body = jsonDecode(response.body) as List<dynamic>;
+    return body.map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> deleteAdminMarker({
+    required String accessToken,
+    required int markerId,
+  }) async {
+    final response = await _client.delete(
+      _uri('/admin/markers/$markerId'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+  }
+
   void _ensureSuccess(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return;
     }
     String detail = 'Request failed with status ${response.statusCode}';
     try {
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      if (body['detail'] is String) {
-        detail = body['detail'] as String;
+      final body = jsonDecode(response.body);
+      if (body is Map<String, dynamic>) {
+        if (body['detail'] is String) {
+          detail = body['detail'] as String;
+        } else if (body['detail'] is List && (body['detail'] as List).isNotEmpty) {
+          detail = '${(body['detail'] as List).first}';
+        }
       }
     } catch (_) {
       // Keep fallback detail if the response is not JSON.

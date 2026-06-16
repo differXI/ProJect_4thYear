@@ -33,6 +33,7 @@ class UserProfile {
     required this.email,
     required this.isActive,
     required this.roleId,
+    required this.roleName,
     this.province,
   });
 
@@ -44,6 +45,10 @@ class UserProfile {
   final String? province;
   final bool isActive;
   final int roleId;
+  final String roleName;
+
+  bool get isAdmin => roleName == 'admin';
+  String get fullName => '$firstName $lastName';
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
@@ -55,6 +60,7 @@ class UserProfile {
       province: json['province'] as String?,
       isActive: json['is_active'] as bool,
       roleId: json['role_id'] as int,
+      roleName: json['role_name'] as String? ?? 'member',
     );
   }
 }
@@ -68,7 +74,12 @@ class RunItem {
     required this.durationSeconds,
     this.manualRouteId,
     this.routePlanId,
+    this.stepCount = 0,
+    this.avgPaceMinPerKm,
     this.notes,
+    this.aiInsight,
+    this.aiReasoning,
+    this.aiRecommendations,
   });
 
   final int id;
@@ -78,7 +89,12 @@ class RunItem {
   final String status;
   final double distanceKm;
   final int durationSeconds;
+  final int stepCount;
+  final double? avgPaceMinPerKm;
   final String? notes;
+  final String? aiInsight;
+  final String? aiReasoning;
+  final String? aiRecommendations;
 
   factory RunItem.fromJson(Map<String, dynamic> json) {
     return RunItem(
@@ -89,7 +105,12 @@ class RunItem {
       status: json['status'] as String,
       distanceKm: (json['distance_km'] as num).toDouble(),
       durationSeconds: json['duration_seconds'] as int,
+      stepCount: json['step_count'] as int? ?? 0,
+      avgPaceMinPerKm: (json['avg_pace_min_per_km'] as num?)?.toDouble(),
       notes: json['notes'] as String?,
+      aiInsight: json['ai_insight'] as String?,
+      aiReasoning: json['ai_reasoning'] as String?,
+      aiRecommendations: json['ai_recommendations'] as String?,
     );
   }
 }
@@ -281,6 +302,9 @@ class HazardMarkerItem {
     required this.lng,
     required this.note,
     required this.status,
+    this.confirmCount = 0,
+    this.dismissCount = 0,
+    this.expiresAt,
   });
 
   final int id;
@@ -291,6 +315,11 @@ class HazardMarkerItem {
   final double lng;
   final String? note;
   final String status;
+  final int confirmCount;
+  final int dismissCount;
+  final String? expiresAt;
+
+  String get categoryLabel => markerType.replaceAll('_', ' ');
 
   factory HazardMarkerItem.fromJson(Map<String, dynamic> json) {
     return HazardMarkerItem(
@@ -302,6 +331,9 @@ class HazardMarkerItem {
       lng: (json['lng'] as num).toDouble(),
       note: json['note'] as String?,
       status: json['status'] as String,
+      confirmCount: json['confirm_count'] as int? ?? 0,
+      dismissCount: json['dismiss_count'] as int? ?? 0,
+      expiresAt: json['expires_at'] as String?,
     );
   }
 }
@@ -364,5 +396,75 @@ class ManualRouteItem {
           ),
         )
         .toList();
+  }
+}
+
+class AdminStats {
+  const AdminStats({
+    required this.totalUsers,
+    required this.activeUsers,
+    required this.totalRuns,
+    required this.finishedRuns,
+    required this.activePins,
+    required this.expiredPins,
+    required this.totalRoutes,
+  });
+
+  final int totalUsers;
+  final int activeUsers;
+  final int totalRuns;
+  final int finishedRuns;
+  final int activePins;
+  final int expiredPins;
+  final int totalRoutes;
+
+  factory AdminStats.fromJson(Map<String, dynamic> json) {
+    return AdminStats(
+      totalUsers: json['total_users'] as int,
+      activeUsers: json['active_users'] as int,
+      totalRuns: json['total_runs'] as int,
+      finishedRuns: json['finished_runs'] as int,
+      activePins: json['active_pins'] as int,
+      expiredPins: json['expired_pins'] as int,
+      totalRoutes: json['total_routes'] as int,
+    );
+  }
+}
+
+class AdminUserItem {
+  const AdminUserItem({
+    required this.id,
+    required this.firstName,
+    required this.lastName,
+    required this.username,
+    required this.email,
+    required this.isActive,
+    required this.roleName,
+    required this.runCount,
+    required this.pinCount,
+  });
+
+  final int id;
+  final String firstName;
+  final String lastName;
+  final String username;
+  final String email;
+  final bool isActive;
+  final String roleName;
+  final int runCount;
+  final int pinCount;
+
+  factory AdminUserItem.fromJson(Map<String, dynamic> json) {
+    return AdminUserItem(
+      id: json['id'] as int,
+      firstName: json['first_name'] as String,
+      lastName: json['last_name'] as String,
+      username: json['username'] as String,
+      email: json['email'] as String,
+      isActive: json['is_active'] as bool,
+      roleName: json['role_name'] as String,
+      runCount: json['run_count'] as int? ?? 0,
+      pinCount: json['pin_count'] as int? ?? 0,
+    );
   }
 }
