@@ -5,9 +5,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.manual_route import ManualRoute
 from app.models.run import Run, RunPoint
 from app.models.user import User
 from app.schemas.run import RunFinish, RunPointCreate, RunStart
+from app.services.analysis_service import AnalysisService
 
 
 class RunService:
@@ -15,6 +17,15 @@ class RunService:
         self.db = db
 
     def start_run(self, user: User, payload: RunStart) -> Run:
+        active = self.db.scalar(select(Run).where(Run.user_id == user.id, Run.status == "active"))
+        if active is not None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You already have an active run")
+
+        if payload.manual_route_id is not None:
+            route = self.db.get(ManualRoute, payload.manual_route_id)
+            if route is None or route.user_id != user.id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+
         run = Run(
             user_id=user.id,
             manual_route_id=payload.manual_route_id,
@@ -32,15 +43,54 @@ class RunService:
         run = self.db.get(Run, run_id)
         if run is None or run.user_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+        if run.status != "active":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Run is not active")
+
         run.status = "finished"
         run.finished_at = datetime.now(timezone.utc)
         points = self.list_run_points(run_id, user.id)
-        run.distance_km = payload.distance_km if payload.distance_km is not None else self._calculate_distance_km(points)
-        run.duration_seconds = (
+        distance_km = payload.distance_km if payload.distance_km is not None else self._calculate_distance_km(points)
+        duration_seconds = (
             payload.duration_seconds
             if payload.duration_seconds is not None
             else self._calculate_duration_seconds(run, points)
         )
+        step_count = payload.step_count if payload.step_count is not None else self._estimate_step_count(duration_seconds)
+        avg_pace = round((duration_seconds / 60.0) / distance_km, 2) if distance_km > 0 else None
+
+        run.distance_km = distance_km
+        run.duration_seconds = duration_seconds
+        run.step_count = step_count
+        run.avg_pace_min_per_km = avg_pace
+
+        recent_runs = list(
+            self.db.scalars(
+                select(Run)
+                .where(Run.user_id == user.id, Run.status == "finished", Run.id != run.id)
+                .order_by(Run.finished_at.desc())
+                .limit(30)
+            ).all()
+        )
+        recent_payload = [
+            {
+                "distance_km": item.distance_km,
+                "duration_seconds": item.duration_seconds,
+                "avg_pace_min_per_km": item.avg_pace_min_per_km,
+            }
+            for item in recent_runs
+        ]
+
+        analysis = AnalysisService().analyze(
+            distance_km=distance_km,
+            duration_seconds=duration_seconds,
+            step_count=step_count,
+            avg_pace_min_per_km=avg_pace,
+            recent_runs=recent_payload,
+        )
+        run.ai_insight = analysis.insight
+        run.ai_reasoning = analysis.reasoning
+        run.ai_recommendations = analysis.recommendations
+
         self.db.add(run)
         self.db.commit()
         self.db.refresh(run)
@@ -87,6 +137,12 @@ class RunService:
         statement = select(Run).where(Run.user_id == user_id).order_by(Run.created_at.desc())
         return list(self.db.scalars(statement).all())
 
+    def get_run(self, run_id: int, user_id: int) -> Run:
+        run = self.db.get(Run, run_id)
+        if run is None or run.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
+        return run
+
     def _calculate_distance_km(self, points: list[RunPoint]) -> float:
         distance_m = 0.0
         for previous, current in zip(points, points[1:]):
@@ -99,6 +155,9 @@ class RunService:
         if run.started_at and run.finished_at:
             return max(0, int((run.finished_at - run.started_at).total_seconds()))
         return 0
+
+    def _estimate_step_count(self, duration_seconds: int) -> int:
+        return max(0, round(duration_seconds * 2.8))
 
     def _distance_m(self, lat1: float, lng1: float, lat2: float, lng2: float) -> float:
         radius_m = 6371000

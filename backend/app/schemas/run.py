@@ -12,6 +12,7 @@ class RunStart(BaseModel):
 class RunFinish(BaseModel):
     distance_km: float | None = Field(default=None, ge=0)
     duration_seconds: int | None = Field(default=None, ge=0)
+    step_count: int | None = Field(default=None, ge=0)
 
 
 class RunPointCreate(BaseModel):
@@ -45,6 +46,11 @@ class RunResponse(BaseModel):
     status: str
     distance_km: float
     duration_seconds: int
+    avg_pace_min_per_km: float | None = None
+    step_count: int = 0
     notes: str | None
+    ai_insight: str | None = None
+    ai_reasoning: str | None = None
+    ai_recommendations: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
