@@ -90,7 +90,7 @@ class RouteService:
 
     def _ensure_map_loaded(self):
         from app.services.map_service import MapService
-        MapService(self.db).ensure_real_map()
+        MapService(self.db).ensure_seed_map()
 
     def _resolve_anchor(self, label: str) -> tuple[float, float]:
         normalized = label.strip().lower()

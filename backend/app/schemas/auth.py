@@ -19,4 +19,3 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
     model_config = ConfigDict(from_attributes=True)
-

@@ -13,6 +13,25 @@ from app.services.admin_service import AdminService
 router = APIRouter()
 
 
+def _marker_response(marker) -> HazardMarkerResponse:
+    expires_at = None
+    if marker.expires_at is not None:
+        expires_at = marker.expires_at.isoformat()
+    return HazardMarkerResponse(
+        id=marker.id,
+        user_id=marker.user_id,
+        marker_type=marker.marker_type,
+        severity=marker.severity,
+        lat=marker.lat,
+        lng=marker.lng,
+        note=marker.note,
+        status=marker.status,
+        confirm_count=marker.confirm_count,
+        dismiss_count=marker.dismiss_count,
+        expires_at=expires_at,
+    )
+
+
 @router.get("/", response_model=BaseMapResponse)
 def get_base_map(db: Session = Depends(get_db)) -> BaseMapResponse:
     service = MapService(db)
@@ -20,13 +39,20 @@ def get_base_map(db: Session = Depends(get_db)) -> BaseMapResponse:
     return BaseMapResponse(
         nodes=[MapNodeResponse.model_validate(node) for node in nodes],
         edges=[MapEdgeResponse.model_validate(edge) for edge in edges],
-        markers=[HazardMarkerResponse.model_validate(marker) for marker in markers],
+        markers=[_marker_response(marker) for marker in markers],
     )
 
 
 @router.get("/base", response_model=BaseMapResponse)
 def get_base_map_alias(db: Session = Depends(get_db)) -> BaseMapResponse:
-    return get_base_map(db)
+    service = MapService(db)
+    nodes, edges, markers = service.get_base_map()
+    return BaseMapResponse(
+        nodes=[MapNodeResponse.model_validate(node) for node in nodes],
+        edges=[MapEdgeResponse.model_validate(edge) for edge in edges],
+        markers=[_marker_response(marker) for marker in markers],
+    )
+
 
 @router.post("/import")
 def import_map(
@@ -46,7 +72,7 @@ def import_map(
 def list_markers(db: Session = Depends(get_db)) -> list[HazardMarkerResponse]:
     service = MapService(db)
     markers = service.list_markers()
-    return [HazardMarkerResponse.model_validate(marker) for marker in markers]
+    return [_marker_response(marker) for marker in markers]
 
 
 @router.post("/markers", response_model=HazardMarkerResponse, status_code=201)
@@ -57,7 +83,7 @@ def create_marker(
 ) -> HazardMarkerResponse:
     service = MapService(db)
     marker = service.create_marker(current_user, payload)
-    return HazardMarkerResponse.model_validate(marker)
+    return _marker_response(marker)
 
 
 @router.get("/manual-routes", response_model=list[ManualRouteResponse])
