@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/models.dart';
@@ -23,8 +24,10 @@ class _RoutesScreenState extends State<RoutesScreen> {
   List<ManualRouteItem> _manualRoutes = const [];
   List<RoutePoint> _drawnPoints = const [];
   ManualRouteItem? _selectedRoute;
+  LatLng? _currentLocation;
   String? _message;
   bool _isLoading = false;
+  bool _isLocating = false;
 
   static const _defaultCenter = LatLng(18.8059, 98.9523);
 
@@ -72,6 +75,43 @@ class _RoutesScreenState extends State<RoutesScreen> {
       _drawnPoints = [..._drawnPoints, RoutePoint(lat: point.latitude, lng: point.longitude)];
       _selectedRoute = null;
     });
+  }
+
+  Future<void> _goToMyLocation() async {
+    setState(() {
+      _isLocating = true;
+      _message = null;
+    });
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are turned off. Please enable GPS.');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permission denied.');
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission permanently denied. Enable it from app settings.');
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      final here = LatLng(position.latitude, position.longitude);
+      if (!mounted) return;
+      setState(() => _currentLocation = here);
+      _mapController.move(here, 16);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _message = '$error');
+    } finally {
+      if (mounted) setState(() => _isLocating = false);
+    }
   }
 
   Future<void> _saveRoute() async {
@@ -165,43 +205,71 @@ class _RoutesScreenState extends State<RoutesScreen> {
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: RunnaColors.muted.withValues(alpha: 0.15)),
           ),
-          child: FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: center,
-              initialZoom: 14,
-              onTap: _handleMapTap,
-            ),
+          child: Stack(
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'runna_mobile',
-              ),
-              if (edgePolylines.isNotEmpty) PolylineLayer(polylines: edgePolylines),
-              if (selectedPolyline.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(points: selectedPolyline, strokeWidth: 5, color: RunnaColors.primaryDark),
-                  ],
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: 14,
+                  onTap: _handleMapTap,
                 ),
-              if (drawnPolyline.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(points: drawnPolyline, strokeWidth: 5, color: RunnaColors.primary),
-                  ],
-                ),
-              MarkerLayer(
-                markers: [
-                  ...hazardMarkers,
-                  ..._drawnPoints.map(
-                    (point) => Marker(
-                      point: LatLng(point.lat, point.lng),
-                      width: 22,
-                      height: 22,
-                      child: const _PinIcon(color: RunnaColors.primary, icon: Icons.circle),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'runna_mobile',
+                  ),
+                  if (edgePolylines.isNotEmpty) PolylineLayer(polylines: edgePolylines),
+                  if (selectedPolyline.isNotEmpty)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(points: selectedPolyline, strokeWidth: 5, color: RunnaColors.primaryDark),
+                      ],
                     ),
+                  if (drawnPolyline.isNotEmpty)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(points: drawnPolyline, strokeWidth: 5, color: RunnaColors.primary),
+                      ],
+                    ),
+                  MarkerLayer(
+                    markers: [
+                      ...hazardMarkers,
+                      ..._drawnPoints.map(
+                        (point) => Marker(
+                          point: LatLng(point.lat, point.lng),
+                          width: 22,
+                          height: 22,
+                          child: const _PinIcon(color: RunnaColors.primary, icon: Icons.circle),
+                        ),
+                      ),
+                      if (_currentLocation != null)
+                        Marker(
+                          point: _currentLocation!,
+                          width: 28,
+                          height: 28,
+                          child: const _PinIcon(color: RunnaColors.accent, icon: Icons.navigation),
+                        ),
+                    ],
                   ),
                 ],
+              ),
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: FloatingActionButton.small(
+                  heroTag: 'routes_locate_me',
+                  backgroundColor: RunnaColors.surface,
+                  foregroundColor: RunnaColors.primaryDark,
+                  onPressed: _isLocating ? null : _goToMyLocation,
+                  child: _isLocating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location),
+                ),
               ),
             ],
           ),
