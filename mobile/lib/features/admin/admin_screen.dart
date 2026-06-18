@@ -17,12 +17,10 @@ class _AdminScreenState extends State<AdminScreen> {
   AdminStats? _stats;
   List<AdminUserItem> _users = const [];
   List<HazardMarkerItem> _markers = const [];
-  List<MapEdgeItem> _riskyEdges = const [];
 
   String? _statsError;
   String? _usersError;
   String? _markersError;
-  String? _edgesError;
   String? _actionMessage;
 
   bool _isLoading = false;
@@ -34,7 +32,6 @@ class _AdminScreenState extends State<AdminScreen> {
     _load();
   }
 
-  // โหลดแต่ละส่วนแยกกัน ถ้าส่วนใดพัง ส่วนอื่นยังแสดงผลได้ตามปกติ
   Future<void> _load() async {
     if (!widget.controller.isAdmin) return;
     setState(() {
@@ -42,14 +39,12 @@ class _AdminScreenState extends State<AdminScreen> {
       _statsError = null;
       _usersError = null;
       _markersError = null;
-      _edgesError = null;
     });
 
     await Future.wait([
       _loadStats(),
       _loadUsers(),
       _loadMarkers(),
-      _loadRiskyEdges(),
     ]);
 
     if (mounted) setState(() => _isLoading = false);
@@ -88,17 +83,6 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
-  Future<void> _loadRiskyEdges() async {
-    try {
-      final edges = await widget.controller.getHighRiskEdges();
-      if (!mounted) return;
-      setState(() => _riskyEdges = edges);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _edgesError = '$error');
-    }
-  }
-
   Future<void> _toggleUser(AdminUserItem user) async {
     setState(() => _isActing = true);
     try {
@@ -131,81 +115,6 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       await widget.controller.deleteAdminMarker(marker.id);
       await _loadMarkers();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _actionMessage = '$error');
-    } finally {
-      if (mounted) setState(() => _isActing = false);
-    }
-  }
-
-  Future<void> _editEdge(MapEdgeItem edge) async {
-    var riskScore = edge.riskScore;
-    var isForbidden = edge.isForbidden;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(edge.roadName),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Risk score: ${riskScore.toStringAsFixed(2)}'),
-                  Slider(
-                    value: riskScore.clamp(0, 1),
-                    min: 0,
-                    max: 1,
-                    divisions: 20,
-                    label: riskScore.toStringAsFixed(2),
-                    onChanged: (value) => setDialogState(() => riskScore = value),
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Forbidden (block from routes)'),
-                    value: isForbidden,
-                    onChanged: (value) => setDialogState(() => isForbidden = value),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
-                FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Save')),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    if (result != true) return;
-
-    setState(() => _isActing = true);
-    try {
-      await widget.controller.overrideEdgeRisk(
-        edgeId: edge.id,
-        riskScore: riskScore,
-        isForbidden: isForbidden,
-      );
-      await _loadRiskyEdges();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _actionMessage = '$error');
-    } finally {
-      if (mounted) setState(() => _isActing = false);
-    }
-  }
-
-  Future<void> _rebuildGraph() async {
-    setState(() => _isActing = true);
-    try {
-      await widget.controller.rebuildMapGraph();
-      if (!mounted) return;
-      setState(() => _actionMessage = 'Map graph rebuilt.');
-      await _loadRiskyEdges();
     } catch (error) {
       if (!mounted) return;
       setState(() => _actionMessage = '$error');
@@ -335,44 +244,6 @@ class _AdminScreenState extends State<AdminScreen> {
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline, color: RunnaColors.danger),
                       onPressed: _isActing ? null : () => _removeMarker(marker),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SectionTitle('High-risk roads'),
-              OutlinedButton.icon(
-                onPressed: _isActing ? null : _rebuildGraph,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Rebuild graph'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_edgesError != null)
-            _ErrorCard(message: 'High-risk roads failed to load: $_edgesError', onRetry: _loadRiskyEdges)
-          else if (_riskyEdges.isEmpty)
-            const RunnaCard(child: Text('No high-risk roads flagged.'))
-          else
-            ..._riskyEdges.map(
-              (edge) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: RunnaCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(edge.roadName),
-                    subtitle: Text(
-                      'Risk ${edge.riskScore.toStringAsFixed(2)} • ${edge.roadClass}'
-                      '${edge.isForbidden ? ' • forbidden' : ''}',
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: _isActing ? null : () => _editEdge(edge),
                     ),
                   ),
                 ),
