@@ -210,34 +210,7 @@ class AuthController extends ChangeNotifier {
     final token = _requireToken();
     return _api.deleteAdminMarker(accessToken: token, markerId: markerId);
   }
-  Future<List<MapEdgeItem>> getHighRiskEdges({double riskThreshold = 0.8}) async {
-    final token = _requireToken();
-    return _api.getHighRiskEdges(token, riskThreshold: riskThreshold);
-  }
-
-  Future<void> overrideEdgeRisk({
-    required int edgeId,
-    required double riskScore,
-    required bool isForbidden,
-  }) async {
-    final token = _requireToken();
-    return _api.overrideEdgeRisk(
-      accessToken: token,
-      edgeId: edgeId,
-      riskScore: riskScore,
-      isForbidden: isForbidden,
-    );
-  }
-
-  Future<void> approveHazardMarker({required int markerId, required bool approved}) async {
-    final token = _requireToken();
-    return _api.approveMarker(accessToken: token, markerId: markerId, approved: approved);
-  }
-
-  Future<void> rebuildMapGraph() async {
-    final token = _requireToken();
-    return _api.rebuildMapGraph(token);
-  }
+  
   String _requireToken() {
     final token = _accessToken;
     if (token == null) {

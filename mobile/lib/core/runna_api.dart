@@ -320,52 +320,6 @@ class RunnaApi {
     );
     _ensureSuccess(response);
   }
-  
-  Future<List<MapEdgeItem>> getHighRiskEdges(
-    String accessToken, {
-    double riskThreshold = 0.8,
-  }) async {
-    final response = await _client.get(
-      _uri('/map/high-risk-edges?risk_threshold=$riskThreshold'),
-      headers: _jsonHeaders(accessToken),
-    );
-    _ensureSuccess(response);
-    final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => MapEdgeItem.fromJson(item as Map<String, dynamic>)).toList();
-  }
-
-  Future<void> overrideEdgeRisk({
-    required String accessToken,
-    required int edgeId,
-    required double riskScore,
-    required bool isForbidden,
-  }) async {
-    final response = await _client.put(
-      _uri('/map/edges/$edgeId/override?risk_score=$riskScore&is_forbidden=$isForbidden'),
-      headers: _jsonHeaders(accessToken),
-    );
-    _ensureSuccess(response);
-  }
-
-  Future<void> approveMarker({
-    required String accessToken,
-    required int markerId,
-    required bool approved,
-  }) async {
-    final response = await _client.put(
-      _uri('/map/markers/$markerId/approve?approved=$approved'),
-      headers: _jsonHeaders(accessToken),
-    );
-    _ensureSuccess(response);
-  }
-
-  Future<void> rebuildMapGraph(String accessToken) async {
-    final response = await _client.post(
-      _uri('/map/rebuild'),
-      headers: _jsonHeaders(accessToken),
-    );
-    _ensureSuccess(response);
-  }
 
   void _ensureSuccess(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
