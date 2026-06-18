@@ -152,7 +152,6 @@ class RouteService:
                     new_cost = cost + dist_m * (1 + risk * risk_mult)
                     heapq.heappush(pq, (new_cost, neighbor, path + [neighbor]))
         
-        # Fallback short path
         return [start_node_id], best_dist, best_risk
 
     def _get_path_risk(self, path: List[int]) -> List[float]:
