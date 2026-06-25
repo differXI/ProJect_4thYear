@@ -11,7 +11,7 @@ import '../../core/models.dart';
 import '../auth/auth_controller.dart';
 
 // ─────────────────────────────────────────────────────────
-// Helpers (top-level so _RunHistorySheet can use them too)
+// Helpers
 // ─────────────────────────────────────────────────────────
 
 String _formatAiStatusMessage(String? aiInsight) {
@@ -66,6 +66,10 @@ class _RunsScreenState extends State<RunsScreen> {
   final _locationService = LocationService();
   final _distance = const Distance();
 
+  // FIX: track whether map has been initialised so we never call
+  // _mapController.move() before FlutterMap is ready.
+  bool _mapReady = false;
+
   StreamSubscription<Position>? _positionSubscription;
   Timer? _runningTimer;
 
@@ -83,10 +87,19 @@ class _RunsScreenState extends State<RunsScreen> {
   bool _isTracking = false;
 
   int _secondsElapsed = 0;
-
-  // FIX #3 — store computed distance as a real field instead of a getter
-  // so setState() in _handlePosition triggers a UI rebuild with the new value.
   double _trackedDistanceKm = 0.0;
+
+  // ── safe map move ─────────────────────────
+  // Call this instead of _mapController.move() everywhere so we never
+  // crash when the map widget has not finished initialising yet.
+  void _safeMapMove(LatLng center, double zoom) {
+    if (!_mapReady || !mounted) return;
+    try {
+      _mapController.move(center, zoom);
+    } catch (_) {
+      // map not ready yet — ignore
+    }
+  }
 
   // ── helpers ──────────────────────────────
 
@@ -121,9 +134,6 @@ class _RunsScreenState extends State<RunsScreen> {
     if (elapsed > _secondsElapsed) _secondsElapsed = elapsed;
   }
 
-  // FIX #1 — lower threshold to 2 m (was 3 m).
-  // GPS drift indoors / under tree cover is often 5-15 m, so the old
-  // 3 m gate was silently dropping most updates.
   bool _shouldRecordPoint(RoutePoint point) {
     if (_trackedPoints.isEmpty) return true;
     final last = _trackedPoints.last;
@@ -134,7 +144,6 @@ class _RunsScreenState extends State<RunsScreen> {
     return meters >= 2;
   }
 
-  // FIX #3 helper — compute distance from a list of points.
   double _calculateDistanceKm(List<RoutePoint> points) {
     var meters = 0.0;
     for (var i = 1; i < points.length; i++) {
@@ -186,7 +195,7 @@ class _RunsScreenState extends State<RunsScreen> {
       if (!mounted) return;
       setState(() => _hazardMarkers = markers);
     } catch (_) {
-      // Non-fatal — hazard pins are supplementary.
+      // Non-fatal
     }
   }
 
@@ -207,22 +216,25 @@ class _RunsScreenState extends State<RunsScreen> {
       final runs = results[0] as List<RunItem>;
       final manualRoutes = results[1] as List<ManualRouteItem>;
       if (!mounted) return;
+
       final wasTracking = _isTracking;
       final activeRun = runs
           .cast<RunItem?>()
           .firstWhere((r) => r?.status == 'active', orElse: () => null);
+
       setState(() {
         _runs = runs;
         _manualRoutes = manualRoutes;
         _activeRun = activeRun;
         _selectedRoute = _pickSelectedRoute(manualRoutes, activeRun);
       });
+
       if (activeRun != null && !wasTracking) {
+        // FIX: only restore points — do NOT auto-start the location stream.
+        // The user must press "Resume GPS" intentionally. This prevents
+        // double-subscription and the "stats stuck at 0" bug.
         await _resumeActiveRun(activeRun);
-        if (mounted && _activeRun != null && !_isTracking) {
-          await _startLocationStream();
-        }
-      } else {
+      } else if (activeRun == null) {
         _moveToRoute();
       }
     } catch (error) {
@@ -241,18 +253,23 @@ class _RunsScreenState extends State<RunsScreen> {
           points.map((p) => RoutePoint(lat: p.lat, lng: p.lng)).toList();
       setState(() {
         _trackedPoints = routePoints;
-        // FIX #3 — recompute stored distance when resuming.
         _trackedDistanceKm = _calculateDistanceKm(routePoints);
         _syncElapsedFromStart(activeRun.startedAt);
+        // FIX: show a clear message so the user knows to press Resume GPS
+        _message = 'Active run found — tap Resume GPS to continue tracking.';
       });
-      if (_trackedPoints.isNotEmpty) {
-        final last = _trackedPoints.last;
-        _mapController.move(LatLng(last.lat, last.lng), 16);
+      if (routePoints.isNotEmpty) {
+        final last = routePoints.last;
+        // FIX: defer map move until after the current frame so FlutterMap
+        // is guaranteed to be initialised.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _safeMapMove(LatLng(last.lat, last.lng), 16);
+        });
       }
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
       setState(
-          () => _message = 'Active run found. Tap Resume GPS to continue.');
+          () => _message = 'Active run found — tap Resume GPS to continue.');
     }
   }
 
@@ -270,17 +287,25 @@ class _RunsScreenState extends State<RunsScreen> {
 
   // ── location stream ───────────────────────
 
-  // FIX #2 — setState _isTracking = true BEFORE subscribing so that
-  // the timer callback sees the correct value from the very first tick.
   Future<void> _startLocationStream() async {
+    // FIX: cancel any existing subscription before creating a new one so we
+    // never have two streams running simultaneously (which caused the timer
+    // and distance counter to fight each other and appear stuck at 0).
     await _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _runningTimer?.cancel();
+    _runningTimer = null;
 
     if (_activeRun?.startedAt != null) {
       _syncElapsedFromStart(_activeRun!.startedAt);
     }
 
-    // Set tracking flag first.
-    setState(() => _isTracking = true);
+    // FIX: set _isTracking = true BEFORE subscribing so the timer callback
+    // always sees the correct flag from the very first tick.
+    setState(() {
+      _isTracking = true;
+      _message = null;
+    });
 
     _positionSubscription = _locationService.positionStream().listen(
       _handlePosition,
@@ -306,30 +331,29 @@ class _RunsScreenState extends State<RunsScreen> {
   }
 
   Future<void> _handlePosition(Position position) async {
+    if (!mounted) return;
+
     final activeRun = _activeRun;
     final point = RoutePoint(lat: position.latitude, lng: position.longitude);
     final heading = _resolveHeading(position);
-    if (!mounted) return;
-
     final shouldRecord = _shouldRecordPoint(point);
 
     setState(() {
       _currentPosition = position;
       _headingDeg = heading;
       if (shouldRecord) {
-        // Build new list (immutable pattern keeps Flutter's diffing happy).
         final updated = [..._trackedPoints, point];
         _trackedPoints = updated;
-        // FIX #3 — update the distance field inside the same setState so
-        // the UI rebuilds with the new value immediately.
         _trackedDistanceKm = _calculateDistanceKm(updated);
       }
     });
 
-    if (_isTracking && _currentPosition != null) {
-      _mapController.move(
+    // FIX: guard map move — map may not be ready on the very first position
+    // event (especially on web where the first fix arrives quickly).
+    if (_isTracking) {
+      _safeMapMove(
         LatLng(position.latitude, position.longitude),
-        _mapController.camera.zoom,
+        _mapReady ? _mapController.camera.zoom : 16,
       );
     }
 
@@ -366,7 +390,7 @@ class _RunsScreenState extends State<RunsScreen> {
       final position = await _locationService.getCurrentPosition();
       if (!mounted) return;
       setState(() => _currentPosition = position);
-      _mapController.move(LatLng(position.latitude, position.longitude), 16);
+      _safeMapMove(LatLng(position.latitude, position.longitude), 16);
     } catch (error) {
       if (!mounted) return;
       setState(() => _message = '$error');
@@ -382,6 +406,8 @@ class _RunsScreenState extends State<RunsScreen> {
       return;
     }
 
+    // FIX: cancel streams before resetting state so the old timer can never
+    // fire after _secondsElapsed is reset to 0.
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     _runningTimer?.cancel();
@@ -391,7 +417,7 @@ class _RunsScreenState extends State<RunsScreen> {
       _isLoading = true;
       _message = null;
       _trackedPoints = const [];
-      _trackedDistanceKm = 0.0; // FIX #3 — reset field too
+      _trackedDistanceKm = 0.0;
       _justFinishedRun = null;
       _secondsElapsed = 0;
       _headingDeg = null;
@@ -405,8 +431,12 @@ class _RunsScreenState extends State<RunsScreen> {
       );
       if (!mounted) return;
       setState(() => _activeRun = run);
+      // Start the stream FIRST, then reload the run list in the background.
       await _startLocationStream();
-      await _loadRuns();
+      // FIX: reload silently without awaiting — prevents _loadRuns from
+      // calling _resumeActiveRun (which would set wasTracking=false and
+      // reset the stream).
+      _loadRuns();
     } catch (error) {
       if (!mounted) return;
       setState(() => _message = '$error');
@@ -423,6 +453,7 @@ class _RunsScreenState extends State<RunsScreen> {
       _message = null;
     });
     try {
+      // Stop tracking before API call so no more points are uploaded.
       await _positionSubscription?.cancel();
       _positionSubscription = null;
       _runningTimer?.cancel();
@@ -446,7 +477,7 @@ class _RunsScreenState extends State<RunsScreen> {
         _headingDeg = null;
         _justFinishedRun = finished;
       });
-      await _loadRuns();
+      _loadRuns();
     } catch (error) {
       if (!mounted) return;
       setState(() => _message = '$error');
@@ -458,8 +489,11 @@ class _RunsScreenState extends State<RunsScreen> {
   void _moveToRoute() {
     final route = _selectedRoute;
     if (route == null || route.points.isEmpty) return;
-    _mapController.move(
-        LatLng(route.points.first.lat, route.points.first.lng), 15);
+    // FIX: defer so FlutterMap is ready before we move.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _safeMapMove(
+          LatLng(route.points.first.lat, route.points.first.lng), 15);
+    });
   }
 
   void _openHistorySheet() {
@@ -509,7 +543,8 @@ class _RunsScreenState extends State<RunsScreen> {
               ),
             ]),
             const SizedBox(height: 8),
-            Text('Severity: ${marker.severity} • Confirms: ${marker.confirmCount}'),
+            Text(
+                'Severity: ${marker.severity} • Confirms: ${marker.confirmCount}'),
             if (marker.note != null && marker.note!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(marker.note!),
@@ -546,7 +581,7 @@ class _RunsScreenState extends State<RunsScreen> {
             ))
         .toList();
 
-    // ── Summary screen (after finishing a run) ────────────────────────
+    // ── Summary screen ───────────────────────────────────────────────
     if (justFinished != null) {
       final hasAi = _hasRealAiInsight(justFinished.aiInsight);
       return Scaffold(
@@ -581,7 +616,6 @@ class _RunsScreenState extends State<RunsScreen> {
                 ),
               ]),
               const SizedBox(height: 20),
-              // Stats grid
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -622,7 +656,6 @@ class _RunsScreenState extends State<RunsScreen> {
                 ]),
               ),
               const SizedBox(height: 16),
-              // AI insight card
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -681,10 +714,9 @@ class _RunsScreenState extends State<RunsScreen> {
       );
     }
 
-    // ── Main run-tracking screen ──────────────────────────────────────
+    // ── Main run-tracking screen ─────────────────────────────────────
     final canFinishRun = !_isLoading && _activeRun != null;
-    final canStartRun =
-        !_isLoading && _activeRun == null && route != null;
+    final canStartRun = !_isLoading && _activeRun == null && route != null;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -701,7 +733,7 @@ class _RunsScreenState extends State<RunsScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        // ── Map ──────────────────────────────────────────────────────
+        // ── Map ─────────────────────────────────────────────────────
         Container(
           height: 380,
           clipBehavior: Clip.antiAlias,
@@ -716,6 +748,11 @@ class _RunsScreenState extends State<RunsScreen> {
                   ? routePolyline.first
                   : const LatLng(18.8059, 98.9523),
               initialZoom: 15,
+              // FIX: set _mapReady = true once FlutterMap fires its onMapReady
+              // callback so _safeMapMove knows it is safe to call move().
+              onMapReady: () {
+                if (mounted) setState(() => _mapReady = true);
+              },
             ),
             children: [
               TileLayer(
@@ -792,7 +829,7 @@ class _RunsScreenState extends State<RunsScreen> {
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.error)),
           ),
-        // ── Control card ─────────────────────────────────────────────
+        // ── Control card ────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -830,7 +867,6 @@ class _RunsScreenState extends State<RunsScreen> {
               const SizedBox(height: 12),
               LinearProgressIndicator(value: _progress),
               const SizedBox(height: 8),
-              // FIX #3 — use _trackedDistanceKm field (not a getter)
               Text(
                 'Progress: ${(_progress * 100).toStringAsFixed(0)}%'
                 ' • Tracked: ${_trackedDistanceKm.toStringAsFixed(2)} km'
@@ -1074,8 +1110,8 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
               ? const Center(child: Text('No finished runs yet.'))
               : ListView.builder(
                   controller: widget.scrollController,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
                   itemCount: finishedRuns.length,
                   itemBuilder: (context, index) {
                     final run = finishedRuns[index];
@@ -1116,7 +1152,8 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade50,
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                     ),
                                     child: Row(
                                       mainAxisAlignment:
@@ -1145,7 +1182,8 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                                     padding: const EdgeInsets.all(14),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFE8F5E9),
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                       border: Border.all(
                                           color: const Color(0xFFA5D6A7)),
                                     ),
@@ -1170,7 +1208,8 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                                             const SizedBox(height: 8),
                                             _ReadableAiSection(
                                                 title: 'Recommendations',
-                                                body: run.aiRecommendations!),
+                                                body:
+                                                    run.aiRecommendations!),
                                           ],
                                         ] else
                                           Text(
