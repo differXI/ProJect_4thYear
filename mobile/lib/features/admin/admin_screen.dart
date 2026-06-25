@@ -76,7 +76,7 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       final markers = await widget.controller.getAdminMarkers();
       if (!mounted) return;
-      setState(() => _markers = markers.where((marker) => marker.status == 'active').toList());
+      setState(() => _markers = markers);
     } catch (error) {
       if (!mounted) return;
       setState(() => _markersError = '$error');
@@ -227,6 +227,11 @@ class _AdminScreenState extends State<AdminScreen> {
 
           const SizedBox(height: 20),
           const SectionTitle('Moderate hazard pins'),
+          if (_markers.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${_markers.length} pins', style: const TextStyle(color: RunnaColors.muted, fontSize: 12)),
+            ),
           const SizedBox(height: 12),
           if (_markersError != null)
             _ErrorCard(message: 'Hazard pins failed to load: $_markersError', onRetry: _loadMarkers)
@@ -240,7 +245,10 @@ class _AdminScreenState extends State<AdminScreen> {
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(marker.categoryLabel),
-                    subtitle: Text('Severity ${marker.severity}${marker.note != null ? ' • ${marker.note}' : ''}'),
+                    subtitle: Text(
+                      'Severity ${marker.severity} • ${marker.status}'
+                      '${marker.note != null ? ' • ${marker.note}' : ''}',
+                    ),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline, color: RunnaColors.danger),
                       onPressed: _isActing ? null : () => _removeMarker(marker),

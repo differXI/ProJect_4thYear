@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -8,6 +9,38 @@ import 'package:latlong2/latlong.dart';
 import '../../core/location_service.dart';
 import '../../core/models.dart';
 import '../auth/auth_controller.dart';
+
+String _formatAiStatusMessage(String? aiInsight) {
+  if (aiInsight == null || aiInsight.isEmpty) {
+    return 'No AI data available for this run.';
+  }
+  if (aiInsight.startsWith('[AI unavailable]')) {
+    return 'Gemini ยังไม่พร้อม: ${aiInsight.replaceFirst('[AI unavailable] ', '')}';
+  }
+  if (aiInsight.startsWith('[Unexpected AI error]')) {
+    return 'เกิดข้อผิดพลาดจาก AI: ${aiInsight.replaceFirst('[Unexpected AI error] ', '')}';
+  }
+  return aiInsight;
+}
+
+bool _hasRealAiInsight(String? aiInsight) {
+  return aiInsight != null &&
+      aiInsight.isNotEmpty &&
+      !aiInsight.startsWith('[AI unavailable]') &&
+      !aiInsight.startsWith('[Unexpected AI error]');
+}
+
+String _formatRunDuration(int totalSeconds) {
+  final hours = totalSeconds ~/ 3600;
+  final minutes = (totalSeconds % 3600) ~/ 60;
+  final seconds = totalSeconds % 60;
+  return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+}
+
+String _formatRunPace(double? paceMinPerKm) {
+  if (paceMinPerKm == null) return '--';
+  return '${paceMinPerKm.toStringAsFixed(2)} min/km';
+}
 
 class RunsScreen extends StatefulWidget {
   const RunsScreen({super.key, required this.controller});
@@ -34,6 +67,7 @@ class _RunsScreenState extends State<RunsScreen> {
   RunItem? _activeRun;
   RunItem? _justFinishedRun;
   Position? _currentPosition;
+  double? _headingDeg;
   String? _message;
   bool _isLoading = false;
   bool _isTracking = false;
@@ -42,11 +76,67 @@ class _RunsScreenState extends State<RunsScreen> {
 
   int _estimateSteps(double distanceKm) => (distanceKm * 1000 / 0.75).round();
 
-  String _formatDuration(int totalSeconds) {
-    final hours = totalSeconds ~/ 3600;
-    final minutes = (totalSeconds % 3600) ~/ 60;
-    final seconds = totalSeconds % 60;
-    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  String _headingLabel(double? degrees) {
+    if (degrees == null) return '—';
+    const labels = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    final index = ((degrees + 22.5) % 360 / 45).floor();
+    return '${labels[index]} (${degrees.round()}°)';
+  }
+
+  double? _resolveHeading(Position position) {
+    if (position.heading >= 0) {
+      return position.heading;
+    }
+    if (_trackedPoints.isEmpty) return null;
+    final previous = _trackedPoints.last;
+    return Geolocator.bearingBetween(
+      previous.lat,
+      previous.lng,
+      position.latitude,
+      position.longitude,
+    );
+  }
+
+  String _formatDuration(int totalSeconds) => _formatRunDuration(totalSeconds);
+
+  String _formatPace(double? paceMinPerKm) => _formatRunPace(paceMinPerKm);
+
+  void _syncElapsedFromStart(DateTime? startedAt) {
+    if (startedAt == null) return;
+    final elapsed = DateTime.now().toUtc().difference(startedAt.toUtc()).inSeconds;
+    if (elapsed > _secondsElapsed) {
+      _secondsElapsed = elapsed;
+    }
+  }
+
+  bool _shouldRecordPoint(RoutePoint point) {
+    if (_trackedPoints.isEmpty) return true;
+    final last = _trackedPoints.last;
+    final meters = _distance(
+      LatLng(last.lat, last.lng),
+      LatLng(point.lat, point.lng),
+    );
+    return meters >= 3;
+  }
+
+  Future<void> _resumeActiveRun(RunItem activeRun) async {
+    try {
+      final points = await widget.controller.getRunPoints(activeRun.id);
+      if (!mounted) return;
+      setState(() {
+        _trackedPoints = points.map((point) => RoutePoint(lat: point.lat, lng: point.lng)).toList();
+        _syncElapsedFromStart(activeRun.startedAt);
+      });
+      if (_trackedPoints.isNotEmpty) {
+        final last = _trackedPoints.last;
+        _mapController.move(LatLng(last.lat, last.lng), 16);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _message = 'Active run found. Tap Resume GPS to continue tracking.';
+      });
+    }
   }
 
   @override
@@ -95,8 +185,9 @@ class _RunsScreenState extends State<RunsScreen> {
       final runs = results[0] as List<RunItem>;
       final manualRoutes = results[1] as List<ManualRouteItem>;
       if (!mounted) return;
-      final activeRun = runs.where((run) => run.status == 'active').cast<RunItem?>().firstWhere(
-            (run) => run != null,
+      final wasTracking = _isTracking;
+      final activeRun = runs.cast<RunItem?>().firstWhere(
+            (run) => run?.status == 'active',
             orElse: () => null,
           );
       setState(() {
@@ -105,7 +196,14 @@ class _RunsScreenState extends State<RunsScreen> {
         _activeRun = activeRun;
         _selectedRoute = _pickSelectedRoute(manualRoutes, activeRun);
       });
-      _moveToRoute();
+      if (activeRun != null && !wasTracking) {
+        await _resumeActiveRun(activeRun);
+        if (mounted && _activeRun != null && !_isTracking) {
+          await _startLocationStream();
+        }
+      } else {
+        _moveToRoute();
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -181,6 +279,7 @@ class _RunsScreenState extends State<RunsScreen> {
       _trackedPoints = const [];
       _justFinishedRun = null;
       _secondsElapsed = 0;
+      _headingDeg = null;
       _isTracking = false;
     });
 
@@ -193,10 +292,8 @@ class _RunsScreenState extends State<RunsScreen> {
       setState(() {
         _activeRun = run;
       });
-      _startTimer();
       await _startLocationStream();
       await _loadRuns();
-      await _loadHazardMarkers();
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -234,6 +331,9 @@ class _RunsScreenState extends State<RunsScreen> {
         });
       },
     );
+    if (_activeRun?.startedAt != null) {
+      _syncElapsedFromStart(_activeRun!.startedAt);
+    }
     setState(() {
       _isTracking = true;
     });
@@ -243,14 +343,22 @@ class _RunsScreenState extends State<RunsScreen> {
   Future<void> _handlePosition(Position position) async {
     final activeRun = _activeRun;
     final point = RoutePoint(lat: position.latitude, lng: position.longitude);
+    final heading = _resolveHeading(position);
     if (!mounted) return;
+
+    final shouldRecord = _shouldRecordPoint(point);
     setState(() {
       _currentPosition = position;
-      _trackedPoints = [..._trackedPoints, point];
+      _headingDeg = heading;
+      if (shouldRecord) {
+        _trackedPoints = [..._trackedPoints, point];
+      }
     });
-    _mapController.move(LatLng(position.latitude, position.longitude), 16);
+    if (_isTracking) {
+      _mapController.move(LatLng(position.latitude, position.longitude), _mapController.camera.zoom);
+    }
 
-    if (activeRun == null) return;
+    if (activeRun == null || !shouldRecord) return;
     try {
       await widget.controller.addRunPoints(
         runId: activeRun.id,
@@ -260,7 +368,7 @@ class _RunsScreenState extends State<RunsScreen> {
             lng: position.longitude,
             accuracyM: position.accuracy,
             speedMps: position.speed >= 0 ? position.speed : null,
-            headingDeg: position.heading >= 0 ? position.heading : null,
+            headingDeg: heading,
             recordedAt: position.timestamp,
           ),
         ],
@@ -301,6 +409,7 @@ class _RunsScreenState extends State<RunsScreen> {
       setState(() {
         _activeRun = null;
         _isTracking = false;
+        _headingDeg = null;
         _justFinishedRun = finished;
       });
       await _loadRuns();
@@ -444,7 +553,7 @@ class _RunsScreenState extends State<RunsScreen> {
       final String? aiReasoning = justFinished.aiReasoning;
       final String? aiRecommendations = justFinished.aiRecommendations;
 
-      final hasAi = aiInsight != null && aiInsight.isNotEmpty;
+      final hasAi = _hasRealAiInsight(aiInsight);
 
       return Scaffold(
         backgroundColor: Colors.white,
@@ -497,13 +606,11 @@ class _RunsScreenState extends State<RunsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        Expanded(child: _MetricTile(label: 'Duration', value: '${justFinished.durationSeconds}s')),
+                        Expanded(child: _MetricTile(label: 'Duration', value: _formatDuration(justFinished.durationSeconds))),
                         Expanded(
                           child: _MetricTile(
                             label: 'Pace',
-                            value: justFinished.avgPaceMinPerKm != null
-                                ? '${justFinished.avgPaceMinPerKm!.toStringAsFixed(2)} m/k'
-                                : '--',
+                            value: _formatPace(justFinished.avgPaceMinPerKm),
                           ),
                         ),
                       ],
@@ -534,7 +641,7 @@ class _RunsScreenState extends State<RunsScreen> {
                     ),
                     const Divider(color: Color(0xFFA5D6A7), height: 24),
                     if (hasAi) ...[
-                      _ReadableAiSection(title: 'Insight', body: aiInsight),
+                      _ReadableAiSection(title: 'Insight', body: aiInsight!),
                       if (aiReasoning != null && aiReasoning.isNotEmpty) ...[
                         const SizedBox(height: 14),
                         _ReadableAiSection(title: 'Reasoning', body: aiReasoning),
@@ -544,11 +651,15 @@ class _RunsScreenState extends State<RunsScreen> {
                         _ReadableAiSection(title: 'Recommendations', body: aiRecommendations),
                       ],
                     ] else
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12.0),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
                         child: Text(
-                          'AI Summary is processing. Please check back shortly in Run History.',
-                          style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w500, fontStyle: FontStyle.italic),
+                          _formatAiStatusMessage(aiInsight),
+                          style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.w500,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ),
                   ],
@@ -560,7 +671,8 @@ class _RunsScreenState extends State<RunsScreen> {
       );
     }
 
-    final bool isFinishEnabled = !_isLoading && _activeRun != null && _isTracking;
+    final bool canFinishRun = !_isLoading && _activeRun != null;
+    final bool canStartRun = !_isLoading && _activeRun == null && route != null;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -610,8 +722,42 @@ class _RunsScreenState extends State<RunsScreen> {
                   polylines: [
                     Polyline(
                       points: trackedPolyline,
-                      strokeWidth: 5,
+                      strokeWidth: 6,
                       color: const Color(0xFF2A9D8F),
+                    ),
+                    Polyline(
+                      points: trackedPolyline,
+                      strokeWidth: 2,
+                      color: const Color(0xFFB2DFDB),
+                      borderStrokeWidth: 0,
+                    ),
+                  ],
+                ),
+              if (_trackedPoints.isNotEmpty)
+                CircleLayer(
+                  circles: _trackedPoints
+                      .map(
+                        (point) => CircleMarker(
+                          point: LatLng(point.lat, point.lng),
+                          radius: 4,
+                          useRadiusInMeter: false,
+                          color: const Color(0x662A9D8F),
+                          borderColor: const Color(0xFF2A9D8F),
+                          borderStrokeWidth: 1,
+                        ),
+                      )
+                      .toList(),
+                ),
+              if (currentPosition != null && currentPosition.accuracy > 0)
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: LatLng(currentPosition.latitude, currentPosition.longitude),
+                      radius: currentPosition.accuracy,
+                      useRadiusInMeter: true,
+                      color: const Color(0x222A9D8F),
+                      borderColor: const Color(0x552A9D8F),
+                      borderStrokeWidth: 1,
                     ),
                   ],
                 ),
@@ -621,9 +767,9 @@ class _RunsScreenState extends State<RunsScreen> {
                   if (currentPosition != null)
                     Marker(
                       point: LatLng(currentPosition.latitude, currentPosition.longitude),
-                      width: 42,
-                      height: 42,
-                      child: const _CurrentLocationPin(),
+                      width: 48,
+                      height: 48,
+                      child: _DirectionalLocationPin(headingDeg: _headingDeg),
                     ),
                 ],
               ),
@@ -675,6 +821,19 @@ class _RunsScreenState extends State<RunsScreen> {
                 ' • ~${_estimateSteps(_trackedDistanceKm)} steps'
                 '${_activeRun != null ? ' • Time: ${_formatDuration(_secondsElapsed)}' : ''}',
               ),
+              if (_isTracking && _headingDeg != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Transform.rotate(
+                      angle: _headingDeg! * math.pi / 180,
+                      child: const Icon(Icons.navigation, size: 16, color: Color(0xFF2A9D8F)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text('Heading: ${_headingLabel(_headingDeg)}'),
+                  ],
+                ),
+              ],
               if (offRouteMeters != null) ...[
                 const SizedBox(height: 6),
                 Text(
@@ -693,11 +852,11 @@ class _RunsScreenState extends State<RunsScreen> {
                     child: const Text('Locate me'),
                   ),
                   FilledButton(
-                    onPressed: (_isLoading || isFinishEnabled) ? null : _startRun,
+                    onPressed: canStartRun ? _startRun : null,
                     child: const Text('Start route run'),
                   ),
                   FilledButton.tonal(
-                    onPressed: isFinishEnabled ? _finishRun : null,
+                    onPressed: canFinishRun ? _finishRun : null,
                     child: const Text('Finish run'),
                   ),
                   OutlinedButton(
@@ -775,25 +934,45 @@ class _ReadableAiSection extends StatelessWidget {
   }
 }
 
-class _CurrentLocationPin extends StatelessWidget {
-  const _CurrentLocationPin();
+class _DirectionalLocationPin extends StatelessWidget {
+  const _DirectionalLocationPin({required this.headingDeg});
+
+  final double? headingDeg;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF2A9D8F),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 4),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: const Color(0x332A9D8F),
+            shape: BoxShape.circle,
           ),
-        ],
-      ),
-      child: const Icon(Icons.my_location, color: Colors.white, size: 18),
+        ),
+        Transform.rotate(
+          angle: (headingDeg ?? 0) * math.pi / 180,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A9D8F),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.navigation, color: Colors.white, size: 16),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -863,7 +1042,7 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                     final String? aiReasoning = run.aiReasoning;
                     final String? aiRecommendations = run.aiRecommendations;
 
-                    final hasAi = aiInsight != null && aiInsight.isNotEmpty;
+                    final hasAi = _hasRealAiInsight(aiInsight);
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -873,8 +1052,8 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                           ListTile(
                             title: Text('Run #${run.id}'),
                             subtitle: Text(
-                              '${run.distanceKm.toStringAsFixed(2)} km • ${run.durationSeconds}s • ${run.stepCount} steps'
-                              '${run.avgPaceMinPerKm != null ? ' • ${run.avgPaceMinPerKm!.toStringAsFixed(2)} m/k' : ''}',
+                              '${run.distanceKm.toStringAsFixed(2)} km • ${_formatRunDuration(run.durationSeconds)} • ${run.stepCount} steps'
+                              '${run.avgPaceMinPerKm != null ? ' • ${_formatRunPace(run.avgPaceMinPerKm)}' : ''}',
                             ),
                             trailing: Icon(
                               isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -901,7 +1080,7 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                                       children: [
                                         Expanded(child: _MetricTile(label: 'Distance', value: '${run.distanceKm.toStringAsFixed(2)} km')),
                                         Expanded(child: _MetricTile(label: 'Steps', value: '${run.stepCount}')),
-                                        Expanded(child: _MetricTile(label: 'Duration', value: '${run.durationSeconds}s')),
+                                        Expanded(child: _MetricTile(label: 'Duration', value: _formatRunDuration(run.durationSeconds))),
                                       ],
                                     ),
                                   ),
@@ -918,7 +1097,7 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         if (hasAi) ...[
-                                          _ReadableAiSection(title: 'Insight', body: aiInsight),
+                                          _ReadableAiSection(title: 'Insight', body: aiInsight!),
                                           if (aiReasoning != null && aiReasoning.isNotEmpty) ...[
                                             const SizedBox(height: 8),
                                             _ReadableAiSection(title: 'Reasoning', body: aiReasoning),
@@ -928,9 +1107,9 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
                                             _ReadableAiSection(title: 'Recommendations', body: aiRecommendations),
                                           ],
                                         ] else
-                                          const Text(
-                                            'No AI data available for this run.',
-                                            style: TextStyle(color: Color(0xFF1B5E20), fontStyle: FontStyle.italic),
+                                          Text(
+                                            _formatAiStatusMessage(aiInsight),
+                                            style: const TextStyle(color: Color(0xFF1B5E20), fontStyle: FontStyle.italic),
                                           ),
                                       ],
                                     ),

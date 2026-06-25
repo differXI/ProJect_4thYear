@@ -7,13 +7,15 @@ try:
 except ImportError:  # pragma: no cover - optional import path for OSM import endpoint
     overpy = None
 
-from sqlalchemy import delete, select
+from fastapi import HTTPException, status
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.models.hazard_marker import HazardMarker
 from app.models.map_edge import MapEdge
 from app.models.map_node import MapNode
 from app.models.manual_route import ManualRoute
+from app.models.run import Run
 from app.models.user import User
 from app.schemas.manual_route import ManualRouteCreate
 from app.schemas.map import HazardMarkerCreate
@@ -57,7 +59,7 @@ class MapService:
                     lat=18.8076,
                     lng=98.9576,
                     note="Fast vehicles cross this segment",
-                    status="approved",
+                    status="active",
                 ),
                 HazardMarker(
                     user_id=first_user_id,
@@ -66,7 +68,7 @@ class MapService:
                     lat=18.7996,
                     lng=98.9490,
                     note="Low light after sunset",
-                    status="approved",
+                    status="active",
                 ),
             ]
             self.db.add_all(markers)
@@ -195,7 +197,7 @@ class MapService:
             lat=payload.lat,
             lng=payload.lng,
             note=payload.note,
-            status="approved",
+            status="active",
         )
         self.db.add(marker)
         self.db.commit()
@@ -204,7 +206,13 @@ class MapService:
 
     def list_markers(self) -> list[HazardMarker]:
         self.ensure_seed_map()
-        return list(self.db.scalars(select(HazardMarker).order_by(HazardMarker.created_at.desc())).all())
+        return list(
+            self.db.scalars(
+                select(HazardMarker)
+                .where(HazardMarker.status != "removed")
+                .order_by(HazardMarker.created_at.desc())
+            ).all()
+        )
 
     def create_manual_route(self, user: User, payload: ManualRouteCreate) -> ManualRoute:
         # Ensure map is loaded
@@ -284,6 +292,17 @@ class MapService:
         return list(
             self.db.scalars(select(ManualRoute).where(ManualRoute.user_id == user_id).order_by(ManualRoute.created_at.desc())).all()
         )
+
+    def delete_manual_route(self, user: User, route_id: int) -> None:
+        route = self.db.get(ManualRoute, route_id)
+        if route is None or route.user_id != user.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+
+        self.db.execute(
+            update(Run).where(Run.manual_route_id == route_id).values(manual_route_id=None)
+        )
+        self.db.delete(route)
+        self.db.commit()
 
     def _edge(
         self,

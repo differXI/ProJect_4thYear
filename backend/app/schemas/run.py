@@ -44,6 +44,8 @@ class RunResponse(BaseModel):
     manual_route_id: int | None = None
     route_plan_id: int | None = None
     status: str
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
     distance_km: float
     duration_seconds: int
     avg_pace_min_per_km: float | None = None

@@ -30,6 +30,17 @@ def start_run(
     return RunResponse.model_validate(run)
 
 
+@router.get("/{run_id}", response_model=RunResponse)
+def get_run(
+    run_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RunResponse:
+    service = RunService(db)
+    run = service.get_run(run_id, current_user.id)
+    return RunResponse.model_validate(run)
+
+
 @router.get("/{run_id}/points", response_model=list[RunPointResponse])
 def list_run_points(
     run_id: int,

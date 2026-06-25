@@ -1,8 +1,8 @@
-"""Run performance analysis with Gemini API."""
-
 from __future__ import annotations
 
 import json
+import re
+import traceback
 from dataclasses import dataclass
 
 import httpx
@@ -14,10 +14,22 @@ from app.core.config import settings
 class AnalysisResult:
     insight: str
     reasoning: str
-    recommendations: str
+    recommendations: list[str]
+
+
+class GeminiUnavailableError(Exception):
+    pass
+
+
+_GEMINI_MODELS = (
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+)
 
 
 class AnalysisService:
+
     def analyze(
         self,
         *,
@@ -27,7 +39,11 @@ class AnalysisService:
         avg_pace_min_per_km: float | None,
         recent_runs: list[dict],
     ) -> AnalysisResult:
-        structured = self._build_structured_summary(
+
+        if not settings.gemini_api_key:
+            raise GeminiUnavailableError("Missing GEMINI_API_KEY")
+
+        summary = self._build_structured_summary(
             distance_km=distance_km,
             duration_seconds=duration_seconds,
             step_count=step_count,
@@ -35,12 +51,7 @@ class AnalysisService:
             recent_runs=recent_runs,
         )
 
-        if settings.gemini_api_key:
-            gemini_result = self._call_gemini(structured)
-            if gemini_result is not None:
-                return gemini_result
-
-        return self._rule_based_analysis(structured)
+        return self._call_gemini(summary)
 
     def _build_structured_summary(
         self,
@@ -51,32 +62,40 @@ class AnalysisService:
         avg_pace_min_per_km: float | None,
         recent_runs: list[dict],
     ) -> dict:
-        # ดักจับและป้องกันปัญหาระยะทางเป็น 0 ไม่ให้สูตรคำนวณ Pace พัง (Division by Zero)
-        pace = avg_pace_min_per_km
-        if pace is None and distance_km > 0:
-            pace = (duration_seconds / 60.0) / distance_km
-        elif distance_km == 0:
-            pace = 0.0
+
+        pace = (
+            (duration_seconds / 60) / distance_km
+            if avg_pace_min_per_km is None and distance_km > 0
+            else (avg_pace_min_per_km or 0)
+        )
 
         recent_paces = [
-            item["avg_pace_min_per_km"]
-            for item in recent_runs
-            if item.get("avg_pace_min_per_km") is not None and item.get("avg_pace_min_per_km") > 0
+            run["avg_pace_min_per_km"]
+            for run in recent_runs
+            if run.get("avg_pace_min_per_km") is not None
         ]
-        avg_recent_pace = sum(recent_paces) / len(recent_paces) if recent_paces else None
 
-        pace_delta = 0.0
-        if pace > 0 and avg_recent_pace is not None:
-            pace_delta = round(pace - avg_recent_pace, 2)
+        avg_recent_pace = (
+            sum(recent_paces) / len(recent_paces)
+            if recent_paces
+            else None
+        )
 
-        # ดักจับและป้องกันปัญหาระยะเวลาเป็น 0 ไม่ให้สูตรคำนวณ รอบขา (Cadence) พัง
-        cadence = 0.0
-        if duration_seconds > 0 and step_count > 0:
-            cadence = round(step_count / (duration_seconds / 60.0), 0)
+        pace_delta = (
+            round(pace - avg_recent_pace, 2)
+            if avg_recent_pace is not None
+            else 0
+        )
+
+        cadence = (
+            round(step_count / (duration_seconds / 60))
+            if duration_seconds > 0
+            else 0
+        )
 
         return {
             "distance_km": round(distance_km, 2),
-            "duration_minutes": round(duration_seconds / 60.0, 1),
+            "duration_minutes": round(duration_seconds / 60, 1),
             "step_count": step_count,
             "avg_pace_min_per_km": round(pace, 2),
             "cadence_spm": cadence,
@@ -84,86 +103,166 @@ class AnalysisService:
             "pace_delta_vs_recent": pace_delta,
         }
 
-    def _rule_based_analysis(self, data: dict) -> AnalysisResult:
-        """ระบบวิเคราะห์สำรอง (Fallback) กรณีที่เชื่อมต่อ Gemini API ไม่สำเร็จ."""
-        pace = data.get("avg_pace_min_per_km", 0)
-        pace_delta = data.get("pace_delta_vs_recent", 0)
-        cadence = data.get("cadence_spm", 0)
+    def _call_gemini(self, data: dict) -> AnalysisResult:
 
-        if data["distance_km"] == 0:
-            insight = "Your run was recorded, but distance is zero."
-        elif pace_delta <= -0.3:
-            insight = "Strong run. Your pace was faster than your recent average."
-        elif pace_delta >= 0.3:
-            insight = "This run was slower than your recent average. Recovery or fatigue may be a factor."
-        else:
-            insight = "Steady performance. Your pace stayed close to your recent average."
+        prompt = f"""
+You are an experienced running coach.
 
-        reasoning_parts = [
-            f"You covered {data['distance_km']} km in {data['duration_minutes']} minutes.",
-        ]
-        if pace > 0:
-            reasoning_parts.append(f"Average pace was {pace} min/km.")
-        if cadence > 0:
-            reasoning_parts.append(f"Estimated cadence was about {cadence} steps per minute.")
+Analyze the run data.
 
-        recommendations = []
-        if data["distance_km"] == 0:
-            recommendations.append("Please check your GPS settings or try running a longer distance next time.")
-        elif pace > 7.5:
-            recommendations.append("Try shorter intervals to gradually improve pace consistency.")
-        else:
-            recommendations.append("Maintain this pace on your next easy run to build consistency.")
+IMPORTANT RULES:
 
-        return AnalysisResult(
-            insight=insight,
-            reasoning=" ".join(reasoning_parts),
-            recommendations=" ".join(recommendations),
-        )
+1. Return ONLY JSON
+2. No markdown
+3. No explanations
+4. No code block
+5. Output must be valid JSON
 
-    def _call_gemini(self, data: dict) -> AnalysisResult | None:
-        """เรียกใช้งาน Google Gemini API เพื่อสรุปผลการวิ่งเป็นภาษาไทยในรูปแบบ JSON."""
-        prompt = (
-            "คุณคือโค้ชวิ่งมืออาชีพและผู้เชี่ยวชาญด้านวิทยาศาสตร์การกีฬา "
-            "จงวิเคราะห์ข้อมูลการวิ่งต่อไปนี้และตอบกลับมาเป็น 'ภาษาไทยเท่านั้น' ในรูปแบบ JSON "
-            "ที่มีคีย์คือ \"insight\", \"reasoning\", และ \"recommendations\" ให้ถูกต้องสมบูรณ์ครบถ้วน\n\n"
-            "⚠️ เงื่อนไขพิเศษ: หากข้อมูล distance_km หรือ duration_minutes เป็น 0 หรือน้อยมาก "
-            "แปลว่าผู้ใช้อาจจะเพิ่งกดทดสอบปุ่มระบบ, ลืมเปิด GPS หรือเพิ่งเริ่มใช้งานแอปครั้งแรก "
-            "ในคีย์ 'insight' ให้บอกยินดีต้อนรับสู่การทดสอบระบบพินและรอบวิ่งจำลอง, คีย์ 'reasoning' ให้เขียนอธิบายสั้นๆ ว่าทำไมข้อมูลสถิติรอบนี้ถึงออกมาเป็นศูนย์ "
-            "และคีย์ 'recommendations' ให้เขียนแนะนำให้ลองเปิดสิทธิ์ GPS หรือเดินก้าวทดสอบเพื่อให้ระบบจับสัญญาณ หรือให้กำลังใจสั้นๆ ในการเริ่มวิ่งรอบจริงครั้งแรก\n\n"
-            f"ข้อมูลการวิ่ง: {json.dumps(data)}"
-        )
-        
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-2.0-flash:generateContent?key={settings.gemini_api_key}"
-        )
+JSON format:
+
+{{
+  "insight": "string",
+  "reasoning": "string",
+  "recommendations": [
+    "string",
+    "string",
+    "string"
+  ]
+}}
+
+Language: English
+
+RUN DATA:
+
+{json.dumps(data, ensure_ascii=False)}
+"""
+
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.4},
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.4,
+                "maxOutputTokens": 1024
+            }
         }
 
-        try:
-            with httpx.Client(timeout=20.0) as client:
-                response = client.post(url, json=payload)
-                response.raise_for_status()
-                body = response.json()
-                text = body["candidates"][0]["content"]["parts"][0]["text"]
-                
-                # ทำความสะอาดข้อมูลข้อความสำเร็จรูป
-                cleaned = text.strip()
-                if cleaned.startswith("```"):
-                    cleaned = cleaned.split("\n", 1)[1]
-                    if "```" in cleaned:
-                        cleaned = cleaned.rsplit("```", 1)[0]
-                if cleaned.startswith("json"):
-                    cleaned = cleaned.split("\n", 1)[1]
-                
-                parsed = json.loads(cleaned.strip())
-                return AnalysisResult(
-                    insight=str(parsed.get("insight", "")),
-                    reasoning=str(parsed.get("reasoning", "")),
-                    recommendations=str(parsed.get("recommendations", "")),
+        last_error = None
+
+        for model in _GEMINI_MODELS:
+
+            try:
+
+                url = (
+                    f"https://generativelanguage.googleapis.com/"
+                    f"v1beta/models/{model}:generateContent"
                 )
+
+                response = httpx.post(
+                    f"{url}?key={settings.gemini_api_key}",
+                    json=payload,
+                    timeout=30,
+                )
+
+                if response.status_code != 200:
+                    print(
+                        f"[GEMINI ERROR {model}]",
+                        response.status_code,
+                        response.text,
+                    )
+                    last_error = response.text
+                    continue
+
+                body = response.json()
+
+                candidates = body.get("candidates")
+
+                if not candidates:
+                    raise ValueError("No candidates returned")
+
+                text = (
+                    candidates[0]
+                    .get("content", {})
+                    .get("parts", [{}])[0]
+                    .get("text", "")
+                )
+
+                parsed = self._parse_json_response(text)
+
+                insight = str(
+                    parsed.get("insight", "")
+                ).strip()
+
+                reasoning = str(
+                    parsed.get("reasoning", "")
+                ).strip()
+
+                recommendations = parsed.get(
+                    "recommendations",
+                    [],
+                )
+
+                if isinstance(recommendations, str):
+                    recommendations = [recommendations]
+
+                recommendations = [
+                    str(item).strip()
+                    for item in recommendations
+                    if str(item).strip()
+                ]
+
+                if not insight:
+                    raise ValueError(
+                        "Empty insight returned"
+                    )
+
+                return AnalysisResult(
+                    insight=insight,
+                    reasoning=reasoning,
+                    recommendations=recommendations,
+                )
+
+            except Exception as exc:
+                traceback.print_exc()
+                last_error = str(exc)
+
+        raise GeminiUnavailableError(
+            last_error or "Gemini call failed"
+        )
+
+    @staticmethod
+    def _parse_json_response(text: str) -> dict:
+
+        text = text.strip()
+
+        match = re.search(
+            r"```(?:json)?\s*(.*?)```",
+            text,
+            re.DOTALL,
+        )
+
+        if match:
+            text = match.group(1).strip()
+
+        try:
+            return json.loads(text)
+
         except Exception:
-            return None
+
+            start = text.find("{")
+            end = text.rfind("}")
+
+            if start >= 0 and end > start:
+                return json.loads(
+                    text[start:end + 1]
+                )
+
+            raise ValueError(
+                f"Invalid JSON returned:\n{text}"
+            )

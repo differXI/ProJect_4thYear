@@ -31,7 +31,9 @@ class AdminService:
         active_users = self.db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))) or 0
         total_runs = self.db.scalar(select(func.count(Run.id))) or 0
         finished_runs = self.db.scalar(select(func.count(Run.id)).where(Run.status == "finished")) or 0
-        active_pins = self.db.scalar(select(func.count(HazardMarker.id)).where(HazardMarker.status == "active")) or 0
+        active_pins = self.db.scalar(
+            select(func.count(HazardMarker.id)).where(HazardMarker.status != "removed")
+        ) or 0
         expired_pins = self.db.scalar(select(func.count(HazardMarker.id)).where(HazardMarker.status == "expired")) or 0
         total_routes = self.db.scalar(select(func.count(ManualRoute.id))) or 0
         
@@ -116,6 +118,8 @@ class AdminService:
         statement = select(HazardMarker).order_by(HazardMarker.created_at.desc())
         if status_filter:
             statement = statement.where(HazardMarker.status == status_filter)
+        else:
+            statement = statement.where(HazardMarker.status != "removed")
         return list(self.db.scalars(statement).all())
 
     def override_edge_risk(self, edge_id: int, risk_score: float, is_forbidden: bool = False) -> MapEdge:

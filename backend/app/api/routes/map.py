@@ -106,6 +106,16 @@ def create_manual_route(
     route = service.create_manual_route(current_user, payload)
     return ManualRouteResponse.model_validate(route, from_attributes=True)
 
+
+@router.delete("/manual-routes/{route_id}", status_code=204)
+def delete_manual_route(
+    route_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    service = MapService(db)
+    service.delete_manual_route(current_user, route_id)
+
 @router.put("/edges/{edge_id}/override")
 def override_edge(
     edge_id: int,

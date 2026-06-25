@@ -179,6 +179,19 @@ class RunnaApi {
     return RunItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  Future<List<RunPointItem>> getRunPoints({
+    required String accessToken,
+    required int runId,
+  }) async {
+    final response = await _client.get(
+      _uri('/runs/$runId/points'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    final body = jsonDecode(response.body) as List<dynamic>;
+    return body.map((item) => RunPointItem.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
   Future<RunItem> startRun({
     required String accessToken,
     int? manualRouteId,

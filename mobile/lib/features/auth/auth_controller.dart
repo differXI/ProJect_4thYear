@@ -159,6 +159,11 @@ class AuthController extends ChangeNotifier {
     return _api.getRun(accessToken: token, runId: runId);
   }
 
+  Future<List<RunPointItem>> getRunPoints(int runId) async {
+    final token = _requireToken();
+    return _api.getRunPoints(accessToken: token, runId: runId);
+  }
+
   Future<RunItem> startRun({int? manualRouteId, int? routePlanId, String? notes}) async {
     final token = _requireToken();
     return _api.startRun(

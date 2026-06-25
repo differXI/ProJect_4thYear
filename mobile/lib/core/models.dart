@@ -74,6 +74,8 @@ class RunItem {
     required this.durationSeconds,
     this.manualRouteId,
     this.routePlanId,
+    this.startedAt,
+    this.finishedAt,
     this.stepCount = 0,
     this.avgPaceMinPerKm,
     this.notes,
@@ -87,6 +89,8 @@ class RunItem {
   final int? manualRouteId;
   final int? routePlanId;
   final String status;
+  final DateTime? startedAt;
+  final DateTime? finishedAt;
   final double distanceKm;
   final int durationSeconds;
   final int stepCount;
@@ -103,6 +107,8 @@ class RunItem {
       manualRouteId: json['manual_route_id'] as int?,
       routePlanId: json['route_plan_id'] as int?,
       status: json['status'] as String,
+      startedAt: json['started_at'] != null ? DateTime.parse(json['started_at'] as String) : null,
+      finishedAt: json['finished_at'] != null ? DateTime.parse(json['finished_at'] as String) : null,
       distanceKm: (json['distance_km'] as num).toDouble(),
       durationSeconds: json['duration_seconds'] as int,
       stepCount: json['step_count'] as int? ?? 0,
@@ -111,6 +117,44 @@ class RunItem {
       aiInsight: json['ai_insight'] as String?,
       aiReasoning: json['ai_reasoning'] as String?,
       aiRecommendations: json['ai_recommendations'] as String?,
+    );
+  }
+}
+
+class RunPointItem {
+  const RunPointItem({
+    required this.id,
+    required this.runId,
+    required this.sequence,
+    required this.lat,
+    required this.lng,
+    this.accuracyM,
+    this.speedMps,
+    this.headingDeg,
+    this.recordedAt,
+  });
+
+  final int id;
+  final int runId;
+  final int sequence;
+  final double lat;
+  final double lng;
+  final double? accuracyM;
+  final double? speedMps;
+  final double? headingDeg;
+  final DateTime? recordedAt;
+
+  factory RunPointItem.fromJson(Map<String, dynamic> json) {
+    return RunPointItem(
+      id: json['id'] as int,
+      runId: json['run_id'] as int,
+      sequence: json['sequence'] as int,
+      lat: (json['lat'] as num).toDouble(),
+      lng: (json['lng'] as num).toDouble(),
+      accuracyM: (json['accuracy_m'] as num?)?.toDouble(),
+      speedMps: (json['speed_mps'] as num?)?.toDouble(),
+      headingDeg: (json['heading_deg'] as num?)?.toDouble(),
+      recordedAt: json['recorded_at'] != null ? DateTime.parse(json['recorded_at'] as String) : null,
     );
   }
 }

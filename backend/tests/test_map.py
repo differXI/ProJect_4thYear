@@ -17,7 +17,18 @@ def test_base_map_and_manual_route(client, auth_headers):
         },
     )
     assert create_route.status_code == 201
+    route_id = create_route.json()["id"]
     assert create_route.json()["distance_km"] > 0
+
+    delete_response = client.delete(
+        f"/api/map/manual-routes/{route_id}",
+        headers=auth_headers,
+    )
+    assert delete_response.status_code == 204
+
+    list_response = client.get("/api/map/manual-routes", headers=auth_headers)
+    assert list_response.status_code == 200
+    assert all(item["id"] != route_id for item in list_response.json())
 
     marker_response = client.post(
         "/api/map/markers",

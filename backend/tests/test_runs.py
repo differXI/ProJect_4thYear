@@ -7,6 +7,11 @@ def test_start_and_finish_run(client, auth_headers):
     assert start_response.status_code == 201
     run_id = start_response.json()["id"]
     assert start_response.json()["status"] == "active"
+    assert start_response.json()["started_at"] is not None
+
+    get_response = client.get(f"/api/runs/{run_id}", headers=auth_headers)
+    assert get_response.status_code == 200
+    assert get_response.json()["id"] == run_id
 
     finish_response = client.post(
         f"/api/runs/{run_id}/finish",
@@ -15,6 +20,14 @@ def test_start_and_finish_run(client, auth_headers):
     )
     assert finish_response.status_code == 200
     assert finish_response.json()["status"] == "finished"
+    assert finish_response.json()["finished_at"] is not None
+
+    finish_again = client.post(
+        f"/api/runs/{run_id}/finish",
+        headers=auth_headers,
+        json={"distance_km": 5.25, "duration_seconds": 1800},
+    )
+    assert finish_again.status_code == 400
 
     list_response = client.get("/api/runs", headers=auth_headers)
     assert list_response.status_code == 200
