@@ -22,9 +22,9 @@ class GeminiUnavailableError(Exception):
 
 
 _GEMINI_MODELS = (
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
+   "gemini-2.5-flash",
+   "gemini-2.0-flash",
+   "gemini-2.0-flash-lite"
 )
 
 
@@ -161,7 +161,7 @@ RUN DATA:
 
                 url = (
                     f"https://generativelanguage.googleapis.com/"
-                    f"v1beta/models/{model}:generateContent"
+                    f"v1/models/{model}:generateContent"
                 )
 
                 response = httpx.post(
