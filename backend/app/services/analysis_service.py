@@ -22,10 +22,18 @@ class GeminiUnavailableError(Exception):
 
 
 _GEMINI_MODELS = (
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
+    "gemini-2.5-flash",       # v1beta
+    "gemini-2.5-flash-lite",  # v1beta  
+    "gemini-2.0-flash",       # v1
+    "gemini-2.0-flash-lite",  # v1
 )
+
+_MODEL_API_VERSION = {
+    "gemini-2.5-flash": "v1beta",
+    "gemini-2.5-flash-lite": "v1beta",
+    "gemini-2.0-flash": "v1",
+    "gemini-2.0-flash-lite": "v1",
+}
 
 
 class AnalysisService:
@@ -159,9 +167,10 @@ RUN DATA:
 
             try:
 
+                version = _MODEL_API_VERSION.get(model, "v1beta")
                 url = (
-                    f"https://generativelanguage.googleapis.com/"
-                    f"v1beta/models/{model}:generateContent"
+                     f"https://generativelanguage.googleapis.com/"
+                      f"{version}/models/{model}:generateContent"
                 )
 
                 response = httpx.post(
