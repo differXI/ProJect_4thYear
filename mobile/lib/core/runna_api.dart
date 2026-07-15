@@ -22,7 +22,9 @@ class RunnaApi {
   Future<HealthResponse> getHealth() async {
     final response = await _client.get(_uri('/health'));
     _ensureSuccess(response);
-    return HealthResponse.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return HealthResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<UserProfile> register({
@@ -44,7 +46,9 @@ class RunnaApi {
       }),
     );
     _ensureSuccess(response);
-    return UserProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return UserProfile.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<AuthToken> login({
@@ -60,26 +64,69 @@ class RunnaApi {
       }),
     );
     _ensureSuccess(response);
-    return AuthToken.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return AuthToken.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<String> forgotPassword({required String email}) async {
+    final response = await _client.post(
+      _uri('/auth/forgot-password'),
+      headers: _jsonHeaders(),
+      body: jsonEncode({'email': email}),
+    );
+    _ensureSuccess(response);
+    return (jsonDecode(response.body) as Map<String, dynamic>)['message']
+        as String;
+  }
+
+  Future<String> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final response = await _client.post(
+      _uri('/auth/reset-password'),
+      headers: _jsonHeaders(),
+      body: jsonEncode({
+        'email': email,
+        'code': code,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      }),
+    );
+    _ensureSuccess(response);
+    return (jsonDecode(response.body) as Map<String, dynamic>)['message']
+        as String;
   }
 
   Future<UserProfile> getMe(String accessToken) async {
-    final response = await _client.get(_uri('/me'), headers: _jsonHeaders(accessToken));
+    final response = await _client.get(
+      _uri('/me'),
+      headers: _jsonHeaders(accessToken),
+    );
     _ensureSuccess(response);
-    return UserProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return UserProfile.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<BaseMapData> getBaseMap() async {
     final response = await _client.get(_uri('/map/base'));
     _ensureSuccess(response);
-    return BaseMapData.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return BaseMapData.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<List<HazardMarkerItem>> getMarkers() async {
     final response = await _client.get(_uri('/map/markers'));
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>)).toList();
+    return body
+        .map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<HazardMarkerItem> createMarker({
@@ -102,7 +149,9 @@ class RunnaApi {
       }),
     );
     _ensureSuccess(response);
-    return HazardMarkerItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return HazardMarkerItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<HazardMarkerItem> validateMarker({
@@ -116,7 +165,9 @@ class RunnaApi {
       body: jsonEncode({'confirmed': confirmed}),
     );
     _ensureSuccess(response);
-    return HazardMarkerItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return HazardMarkerItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<List<ManualRouteItem>> getManualRoutes(String accessToken) async {
@@ -126,7 +177,9 @@ class RunnaApi {
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => ManualRouteItem.fromJson(item as Map<String, dynamic>)).toList();
+    return body
+        .map((item) => ManualRouteItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<ManualRouteItem> createManualRoute({
@@ -143,7 +196,9 @@ class RunnaApi {
       }),
     );
     _ensureSuccess(response);
-    return ManualRouteItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return ManualRouteItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<void> deleteManualRoute({
@@ -164,7 +219,9 @@ class RunnaApi {
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => RunItem.fromJson(item as Map<String, dynamic>)).toList();
+    return body
+        .map((item) => RunItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<RunItem> getRun({
@@ -189,7 +246,9 @@ class RunnaApi {
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => RunPointItem.fromJson(item as Map<String, dynamic>)).toList();
+    return body
+        .map((item) => RunPointItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<RunItem> startRun({
@@ -252,7 +311,9 @@ class RunnaApi {
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => RoutePlanItem.fromJson(item as Map<String, dynamic>)).toList();
+    return body
+        .map((item) => RoutePlanItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<RoutePlanItem> generateRoute({
@@ -273,7 +334,9 @@ class RunnaApi {
       }),
     );
     _ensureSuccess(response);
-    return RoutePlanItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return RoutePlanItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<AdminStats> getAdminStats(String accessToken) async {
@@ -282,7 +345,9 @@ class RunnaApi {
       headers: _jsonHeaders(accessToken),
     );
     _ensureSuccess(response);
-    return AdminStats.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return AdminStats.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<List<AdminUserItem>> getAdminUsers(String accessToken) async {
@@ -292,7 +357,9 @@ class RunnaApi {
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => AdminUserItem.fromJson(item as Map<String, dynamic>)).toList();
+    return body
+        .map((item) => AdminUserItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<AdminUserItem> updateAdminUser({
@@ -310,7 +377,9 @@ class RunnaApi {
       }),
     );
     _ensureSuccess(response);
-    return AdminUserItem.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    return AdminUserItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<List<HazardMarkerItem>> getAdminMarkers(String accessToken) async {
@@ -320,7 +389,9 @@ class RunnaApi {
     );
     _ensureSuccess(response);
     final body = jsonDecode(response.body) as List<dynamic>;
-    return body.map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>)).toList();
+    return body
+        .map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> deleteAdminMarker({
@@ -344,7 +415,8 @@ class RunnaApi {
       if (body is Map<String, dynamic>) {
         if (body['detail'] is String) {
           detail = body['detail'] as String;
-        } else if (body['detail'] is List && (body['detail'] as List).isNotEmpty) {
+        } else if (body['detail'] is List &&
+            (body['detail'] as List).isNotEmpty) {
           detail = '${(body['detail'] as List).first}';
         }
       }

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,7 +24,7 @@ class AuthController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedToken = prefs.getString(_tokenStorageKey);
-      
+
       if (savedToken != null && savedToken.isNotEmpty) {
         // Validate token vitality by calling the profile endpoint
         final user = await _api.getMe(savedToken);
@@ -84,6 +83,24 @@ class AuthController extends ChangeNotifier {
     await _persistToken(token.accessToken);
     notifyListeners();
     return _currentUser!;
+  }
+
+  Future<String> forgotPassword({required String email}) {
+    return _api.forgotPassword(email: email);
+  }
+
+  Future<String> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String confirmPassword,
+  }) {
+    return _api.resetPassword(
+      email: email,
+      code: code,
+      newPassword: newPassword,
+      confirmPassword: confirmPassword,
+    );
   }
 
   Future<void> logout() async {
@@ -164,7 +181,11 @@ class AuthController extends ChangeNotifier {
     return _api.getRunPoints(accessToken: token, runId: runId);
   }
 
-  Future<RunItem> startRun({int? manualRouteId, int? routePlanId, String? notes}) async {
+  Future<RunItem> startRun({
+    int? manualRouteId,
+    int? routePlanId,
+    String? notes,
+  }) async {
     final token = _requireToken();
     return _api.startRun(
       accessToken: token,
@@ -178,11 +199,7 @@ class AuthController extends ChangeNotifier {
     required List<RunPointUpload> points,
   }) async {
     final token = _requireToken();
-    return _api.addRunPoints(
-      accessToken: token,
-      runId: runId,
-      points: points,
-    );
+    return _api.addRunPoints(accessToken: token, runId: runId, points: points);
   }
 
   Future<RunItem> finishRun({

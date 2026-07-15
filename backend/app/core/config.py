@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,6 +15,18 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     cors_origins: List[str] = Field(default_factory=list, alias="CORS_ORIGINS")
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    smtp_host: str = Field(default="", alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_username: str = Field(default="", alias="SMTP_USERNAME")
+    smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(default="", alias="SMTP_FROM_EMAIL")
+    smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
+    password_reset_email_backend: Literal["disabled", "smtp"] = Field(
+        default="disabled", alias="PASSWORD_RESET_EMAIL_BACKEND"
+    )
+    password_reset_code_expire_minutes: int = Field(
+        default=10, alias="PASSWORD_RESET_CODE_EXPIRE_MINUTES"
+    )
 
     # 📝 2 บรรทัดที่พวกเราเพิ่มเข้าไปเพื่อรองรับการล็อกอินแอดมิน
     admin_email: str = Field(default="admin@runna.com", alias="ADMIN_EMAIL")

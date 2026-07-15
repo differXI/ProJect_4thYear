@@ -10,7 +10,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: RunnaTheme.light(),
-        home: AuthScreen(controller: _FakeAuthController()),
+        home: Scaffold(body: AuthScreen(controller: _FakeAuthController())),
       ),
     );
     await tester.pumpAndSettle();
@@ -23,5 +23,6 @@ void main() {
 
 class _FakeAuthController extends AuthController {
   @override
-  Future<HealthResponse> getHealth() async => const HealthResponse(status: 'ok');
+  Future<HealthResponse> getHealth() async =>
+      const HealthResponse(status: 'ok');
 }

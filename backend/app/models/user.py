@@ -24,3 +24,6 @@ class User(TimestampMixin, Base):
     manual_routes = relationship("ManualRoute", back_populates="user", cascade="all, delete-orphan")
     route_plans = relationship("RoutePlan", back_populates="user", cascade="all, delete-orphan")
     runs = relationship("Run", back_populates="user", cascade="all, delete-orphan")
+    password_reset_codes = relationship(
+        "PasswordResetCode", back_populates="user", cascade="all, delete-orphan"
+    )
