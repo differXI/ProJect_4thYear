@@ -32,7 +32,6 @@ class AuthController extends ChangeNotifier {
         _currentUser = user;
       }
     } catch (_) {
-      // Invalidate on expiration or connection failure to prevent corruption
       await _clearStoredToken();
       _accessToken = null;
       _currentUser = null;
