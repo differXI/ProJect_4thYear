@@ -170,17 +170,6 @@ class RunnaApi {
     );
   }
 
-  Future<void> deleteMarker({
-    required String accessToken,
-    required int markerId,
-  }) async {
-    final response = await _client.delete(
-      _uri('/map/markers/$markerId'),
-      headers: _jsonHeaders(accessToken),
-    );
-    _ensureSuccess(response);
-  }
-
   Future<List<ManualRouteItem>> getManualRoutes(String accessToken) async {
     final response = await _client.get(
       _uri('/map/manual-routes'),

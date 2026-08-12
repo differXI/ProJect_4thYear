@@ -345,13 +345,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Saved routes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-            Text('${_manualRoutes.length} total', style: TextStyle(color: RunnaColors.muted, fontWeight: FontWeight.w600)),
-          ],
-        ),
+        const SectionTitle('Saved routes'),
         const SizedBox(height: 12),
         if (!widget.controller.isAuthenticated)
           const RunnaCard(child: Text('Sign in to create and save your own routes.'))
