@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -24,6 +25,11 @@ class ManualRouteResponse(BaseModel):
     path_json: str
     snapped_path_json: str | None = None
     distance_km: float
+    is_shared: bool = False
+    shared_at: datetime | None = None
+    creator_full_name: str | None = None
+    creator_province: str | None = None
+    run_count: int = 0
     validation: ManualRouteValidation
 
     model_config = ConfigDict(from_attributes=True)

@@ -412,6 +412,11 @@ class ManualRouteItem {
     required this.name,
     required this.pathJson,
     required this.distanceKm,
+    required this.isShared,
+    this.sharedAt,
+    this.creatorFullName,
+    this.creatorProvince,
+    required this.runCount,
   });
 
   final int id;
@@ -419,6 +424,11 @@ class ManualRouteItem {
   final String name;
   final String pathJson;
   final double distanceKm;
+  final bool isShared;
+  final String? sharedAt;
+  final String? creatorFullName;
+  final String? creatorProvince;
+  final int runCount;
 
   factory ManualRouteItem.fromJson(Map<String, dynamic> json) {
     return ManualRouteItem(
@@ -427,6 +437,11 @@ class ManualRouteItem {
       name: json['name'] as String,
       pathJson: json['path_json'] as String,
       distanceKm: (json['distance_km'] as num).toDouble(),
+      isShared: json['is_shared'] as bool? ?? false,
+      sharedAt: json['shared_at'] as String?,
+      creatorFullName: json['creator_full_name'] as String?,
+      creatorProvince: json['creator_province'] as String?,
+      runCount: json['run_count'] as int? ?? 0,
     );
   }
 

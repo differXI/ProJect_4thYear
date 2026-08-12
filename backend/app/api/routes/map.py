@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.schemas.manual_route import ManualRouteCreate, ManualRouteResponse
 from app.schemas.map import BaseMapResponse, HazardMarkerCreate, HazardMarkerResponse, MapEdgeResponse, MapNodeResponse
+from app.schemas.serializers import manual_route_to_response
 from app.services.auth_service import get_current_user
 from fastapi import Query, Depends, HTTPException, status
 from app.services.map_service import MapService
@@ -93,7 +94,31 @@ def list_manual_routes(
 ) -> list[ManualRouteResponse]:
     service = MapService(db)
     routes = service.list_manual_routes(current_user.id)
-    return [ManualRouteResponse.model_validate(route) for route in routes]
+    return [ManualRouteResponse.model_validate(route, from_attributes=True) for route in routes]
+
+
+@router.get("/manual-routes/shared", response_model=list[ManualRouteResponse])
+def list_shared_manual_routes(
+    q: str | None = Query(None, alias="q"),
+    province: str | None = None,
+    sort: str = Query("newest", pattern="^(newest|popular)$"),
+    db: Session = Depends(get_db),
+) -> list[ManualRouteResponse]:
+    service = MapService(db)
+    routes = service.list_shared_manual_routes(search=q, province=province, sort=sort)
+    return [manual_route_to_response(route) for route in routes]
+
+
+@router.put("/manual-routes/{route_id}/share", response_model=ManualRouteResponse)
+def share_manual_route(
+    route_id: int,
+    share: bool = Query(True),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ManualRouteResponse:
+    service = MapService(db)
+    route = service.share_manual_route(current_user, route_id, share)
+    return manual_route_to_response(route)
 
 
 @router.post("/manual-routes", response_model=ManualRouteResponse, status_code=201)

@@ -143,9 +143,41 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  Future<void> deleteMarker({required int markerId}) async {
+    final token = _requireToken();
+    return _api.deleteMarker(
+      accessToken: token,
+      markerId: markerId,
+    );
+  }
+
   Future<List<ManualRouteItem>> getManualRoutes() async {
     final token = _requireToken();
     return _api.getManualRoutes(token);
+  }
+
+  Future<List<ManualRouteItem>> getCommunityRoutes({
+    String? search,
+    String? province,
+    String sort = 'newest',
+  }) async {
+    return _api.getCommunityRoutes(
+      search: search,
+      province: province,
+      sort: sort,
+    );
+  }
+
+  Future<ManualRouteItem> shareManualRoute({
+    required int routeId,
+    bool share = true,
+  }) async {
+    final token = _requireToken();
+    return _api.shareManualRoute(
+      accessToken: token,
+      routeId: routeId,
+      share: share,
+    );
   }
 
   Future<ManualRouteItem> createManualRoute({

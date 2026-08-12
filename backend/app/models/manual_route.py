@@ -1,6 +1,7 @@
 import json
+from datetime import datetime
 
-from sqlalchemy import Float, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -16,6 +17,8 @@ class ManualRoute(TimestampMixin, Base):
     path_json: Mapped[str] = mapped_column(String(8000), nullable=False)
     snapped_path_json: Mapped[str | None] = mapped_column(String(16000), nullable=True)
     distance_km: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    is_shared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default='false')
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     validation_json: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     user = relationship("User", back_populates="manual_routes")

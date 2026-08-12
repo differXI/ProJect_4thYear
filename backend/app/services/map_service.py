@@ -7,9 +7,11 @@ try:
 except ImportError:  # pragma: no cover - optional import path for OSM import endpoint
     overpy = None
 
+from datetime import datetime
+
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, select, update, func
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.hazard_marker import HazardMarker
 from app.models.map_edge import MapEdge
@@ -290,8 +292,69 @@ class MapService:
 
     def list_manual_routes(self, user_id: int) -> list[ManualRoute]:
         return list(
-            self.db.scalars(select(ManualRoute).where(ManualRoute.user_id == user_id).order_by(ManualRoute.created_at.desc())).all()
+            self.db.scalars(
+                select(ManualRoute)
+                .where(ManualRoute.user_id == user_id)
+                .order_by(ManualRoute.created_at.desc())
+            ).all()
         )
+
+    def list_shared_manual_routes(
+        self,
+        search: str | None = None,
+        province: str | None = None,
+        sort: str = 'newest',
+    ) -> list[ManualRoute]:
+        stmt = (
+            select(
+                ManualRoute,
+                func.count(Run.id).label('run_count'),
+            )
+            .outerjoin(Run, Run.manual_route_id == ManualRoute.id)
+            .where(ManualRoute.is_shared == True)
+            .group_by(ManualRoute.id)
+        )
+
+        if search:
+            q = f"%{search.lower()}%"
+            stmt = stmt.join(User, ManualRoute.user).where(
+                func.or_(
+                    func.lower(ManualRoute.name).like(q),
+                    func.lower(User.first_name).like(q),
+                    func.lower(User.last_name).like(q),
+                    func.lower(User.username).like(q),
+                )
+            )
+
+        if province:
+            stmt = stmt.join(User, ManualRoute.user).where(func.lower(User.province) == province.lower())
+
+        if sort == 'popular':
+            stmt = stmt.order_by(func.count(Run.id).desc(), ManualRoute.shared_at.desc())
+        else:
+            stmt = stmt.order_by(ManualRoute.shared_at.desc(), ManualRoute.created_at.desc())
+
+        results = self.db.execute(stmt).all()
+        routes: list[ManualRoute] = []
+        for route, run_count in results:
+            setattr(route, 'run_count', int(run_count or 0))
+            routes.append(route)
+        return routes
+
+    def share_manual_route(self, user: User, route_id: int, share: bool = True) -> ManualRoute:
+        route = self.db.get(ManualRoute, route_id)
+        if route is None or route.user_id != user.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Route not found')
+        if share:
+            route.is_shared = True
+            route.shared_at = datetime.utcnow()
+        else:
+            route.is_shared = False
+            route.shared_at = None
+        self.db.add(route)
+        self.db.commit()
+        self.db.refresh(route)
+        return route
 
     def delete_manual_route(self, user: User, route_id: int) -> None:
         route = self.db.get(ManualRoute, route_id)

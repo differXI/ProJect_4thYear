@@ -154,6 +154,37 @@ class _RoutesScreenState extends State<RoutesScreen> {
     }
   }
 
+  Future<void> _toggleShareRoute(ManualRouteItem route) async {
+    if (!widget.controller.isAuthenticated) {
+      setState(() => _message = 'Sign in to share routes with the community.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _message = null;
+    });
+
+    try {
+      final sharedRoute = await widget.controller.shareManualRoute(
+        routeId: route.id,
+        share: !route.isShared,
+      );
+      if (!mounted) return;
+      setState(() {
+        _manualRoutes = _manualRoutes
+            .map((existing) => existing.id == route.id ? sharedRoute : existing)
+            .toList();
+        _message = sharedRoute.isShared ? 'Route shared to community.' : 'Route removed from community.';
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _message = '$error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   List<LatLng> _polylinePoints(List<RoutePoint> points) {
     return points.map((point) => LatLng(point.lat, point.lng)).toList();
   }
@@ -314,7 +345,13 @@ class _RoutesScreenState extends State<RoutesScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        const SectionTitle('Saved routes'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Saved routes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            Text('${_manualRoutes.length} total', style: TextStyle(color: RunnaColors.muted, fontWeight: FontWeight.w600)),
+          ],
+        ),
         const SizedBox(height: 12),
         if (!widget.controller.isAuthenticated)
           const RunnaCard(child: Text('Sign in to create and save your own routes.'))
@@ -329,9 +366,22 @@ class _RoutesScreenState extends State<RoutesScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: Text(route.name),
                   subtitle: Text('${route.distanceKm.toStringAsFixed(2)} km • ${route.points.length} points'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: _isLoading ? null : () => _deleteRoute(route),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          route.isShared ? Icons.check_circle : Icons.share_outlined,
+                          color: route.isShared ? RunnaColors.primary : null,
+                        ),
+                        tooltip: route.isShared ? 'Shared to community' : 'Share to community',
+                        onPressed: _isLoading ? null : () => _toggleShareRoute(route),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: _isLoading ? null : () => _deleteRoute(route),
+                      ),
+                    ],
                   ),
                   onTap: () => setState(() {
                     _selectedRoute = route;

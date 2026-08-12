@@ -20,6 +20,7 @@ class _HazardsScreenState extends State<HazardsScreen> {
   final _noteController = TextEditingController();
 
   List<HazardMarkerItem> _markers = const [];
+  HazardMarkerItem? _selectedMarker;
   LatLng? _selectedPoint;
   String _category = 'construction';
   int _severity = 3;
@@ -67,7 +68,39 @@ class _HazardsScreenState extends State<HazardsScreen> {
   }
 
   void _handleMapTap(TapPosition _, LatLng point) {
-    setState(() => _selectedPoint = point);
+    setState(() {
+      _selectedPoint = point;
+      _selectedMarker = null;
+    });
+  }
+
+  void _handlePinTap(HazardMarkerItem marker) {
+    setState(() {
+      _selectedMarker = marker;
+      _selectedPoint = null;
+    });
+  }
+
+  Future<void> _deletePin(HazardMarkerItem marker) async {
+    if (!widget.controller.isAuthenticated) {
+      setState(() => _message = 'Sign in to delete your pins.');
+      return;
+    }
+    if (marker.userId != widget.controller.currentUser?.id) {
+      setState(() => _message = 'You can only delete your own pins.');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await widget.controller.deleteMarker(markerId: marker.id);
+      setState(() => _selectedMarker = null);
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _message = '$error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _createPin() async {
@@ -124,15 +157,19 @@ class _HazardsScreenState extends State<HazardsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final myPins = _markers.where((marker) => marker.userId == widget.controller.currentUser?.id).toList();
     final mapMarkers = _markers
         .map(
           (marker) => Marker(
             point: LatLng(marker.lat, marker.lng),
-            width: 36,
-            height: 36,
-            child: CircleAvatar(
-              backgroundColor: RunnaColors.danger,
-              child: Text('${marker.severity}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+            width: 42,
+            height: 42,
+            child: GestureDetector(
+              onTap: () => _handlePinTap(marker),
+              child: CircleAvatar(
+                backgroundColor: RunnaColors.danger,
+                child: Text('${marker.severity}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+              ),
             ),
           ),
         )

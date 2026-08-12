@@ -170,6 +170,17 @@ class RunnaApi {
     );
   }
 
+  Future<void> deleteMarker({
+    required String accessToken,
+    required int markerId,
+  }) async {
+    final response = await _client.delete(
+      _uri('/map/markers/$markerId'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+  }
+
   Future<List<ManualRouteItem>> getManualRoutes(String accessToken) async {
     final response = await _client.get(
       _uri('/map/manual-routes'),
@@ -180,6 +191,40 @@ class RunnaApi {
     return body
         .map((item) => ManualRouteItem.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<List<ManualRouteItem>> getCommunityRoutes({
+    String? search,
+    String? province,
+    String sort = 'newest',
+  }) async {
+    final queryParameters = <String, String>{
+      'sort': sort,
+      if (search != null && search.isNotEmpty) 'q': search,
+      if (province != null && province.isNotEmpty) 'province': province,
+    };
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/map/manual-routes/shared').replace(queryParameters: queryParameters);
+    final response = await _client.get(uri);
+    _ensureSuccess(response);
+    final body = jsonDecode(response.body) as List<dynamic>;
+    return body
+        .map((item) => ManualRouteItem.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ManualRouteItem> shareManualRoute({
+    required String accessToken,
+    required int routeId,
+    bool share = true,
+  }) async {
+    final response = await _client.put(
+      _uri('/map/manual-routes/$routeId/share?share=$share'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    return ManualRouteItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<ManualRouteItem> createManualRoute({
