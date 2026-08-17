@@ -349,6 +349,9 @@ class HazardMarkerItem {
     this.confirmCount = 0,
     this.dismissCount = 0,
     this.expiresAt,
+    this.createdAt,
+    this.reporterName,
+    this.isMine = false,
   });
 
   final int id;
@@ -362,8 +365,19 @@ class HazardMarkerItem {
   final int confirmCount;
   final int dismissCount;
   final String? expiresAt;
+  final String? createdAt;
+  final String? reporterName;
+  final bool isMine;
 
   String get categoryLabel => markerType.replaceAll('_', ' ');
+
+  /// Days elapsed since this pin was reported, based on [createdAt].
+  int? get daysSinceReported {
+    if (createdAt == null) return null;
+    final reported = DateTime.tryParse(createdAt!);
+    if (reported == null) return null;
+    return DateTime.now().toUtc().difference(reported.toUtc()).inDays;
+  }
 
   factory HazardMarkerItem.fromJson(Map<String, dynamic> json) {
     return HazardMarkerItem(
@@ -378,6 +392,9 @@ class HazardMarkerItem {
       confirmCount: json['confirm_count'] as int? ?? 0,
       dismissCount: json['dismiss_count'] as int? ?? 0,
       expiresAt: json['expires_at'] as String?,
+      createdAt: json['created_at'] as String?,
+      reporterName: json['reporter_name'] as String?,
+      isMine: json['is_mine'] as bool? ?? false,
     );
   }
 }
@@ -417,6 +434,7 @@ class ManualRouteItem {
     this.creatorFullName,
     this.creatorProvince,
     required this.runCount,
+    this.isFavorited = false,
   });
 
   final int id;
@@ -429,6 +447,7 @@ class ManualRouteItem {
   final String? creatorFullName;
   final String? creatorProvince;
   final int runCount;
+  final bool isFavorited;
 
   factory ManualRouteItem.fromJson(Map<String, dynamic> json) {
     return ManualRouteItem(
@@ -442,6 +461,23 @@ class ManualRouteItem {
       creatorFullName: json['creator_full_name'] as String?,
       creatorProvince: json['creator_province'] as String?,
       runCount: json['run_count'] as int? ?? 0,
+      isFavorited: json['is_favorited'] as bool? ?? false,
+    );
+  }
+
+  ManualRouteItem copyWith({bool? isFavorited}) {
+    return ManualRouteItem(
+      id: id,
+      userId: userId,
+      name: name,
+      pathJson: pathJson,
+      distanceKm: distanceKm,
+      isShared: isShared,
+      sharedAt: sharedAt,
+      creatorFullName: creatorFullName,
+      creatorProvince: creatorProvince,
+      runCount: runCount,
+      isFavorited: isFavorited ?? this.isFavorited,
     );
   }
 

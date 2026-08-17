@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     password_reset_code_expire_minutes: int = Field(
         default=10, alias="PASSWORD_RESET_CODE_EXPIRE_MINUTES"
     )
+    pin_expiry_hours: int = Field(default=24 * 7, alias="PIN_EXPIRY_HOURS")
+    pin_dismiss_removal_threshold: int = Field(default=5, alias="PIN_DISMISS_REMOVAL_THRESHOLD")
 
     # 📝 2 บรรทัดที่พวกเราเพิ่มเข้าไปเพื่อรองรับการล็อกอินแอดมิน
     admin_email: str = Field(default="admin@runna.com", alias="ADMIN_EMAIL")

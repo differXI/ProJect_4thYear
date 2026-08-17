@@ -172,6 +172,23 @@ class AuthController extends ChangeNotifier {
     );
   }
 
+  Future<ManualRouteItem> favoriteManualRoute({
+    required int routeId,
+    bool favorite = true,
+  }) async {
+    final token = _requireToken();
+    return _api.favoriteManualRoute(
+      accessToken: token,
+      routeId: routeId,
+      favorite: favorite,
+    );
+  }
+
+  Future<List<ManualRouteItem>> getFavoriteRoutes() async {
+    final token = _requireToken();
+    return _api.getFavoriteRoutes(token);
+  }
+
   Future<ManualRouteItem> createManualRoute({
     required String name,
     required List<RoutePoint> points,
@@ -294,6 +311,31 @@ class AuthController extends ChangeNotifier {
   Future<void> deleteAdminMarker(int markerId) async {
     final token = _requireToken();
     return _api.deleteAdminMarker(accessToken: token, markerId: markerId);
+  }
+
+  Future<List<HazardMarkerItem>> getMyMarkers() async {
+    final token = _requireToken();
+    return _api.getMyMarkers(token);
+  }
+
+  Future<void> deleteMarker(int markerId) async {
+    final token = _requireToken();
+    return _api.deleteMarker(accessToken: token, markerId: markerId);
+  }
+
+  Future<List<ManualRouteItem>> getAdminRoutes() async {
+    final token = _requireToken();
+    return _api.getAdminRoutes(token);
+  }
+
+  Future<ManualRouteItem> unpublishAdminRoute(int routeId) async {
+    final token = _requireToken();
+    return _api.unpublishAdminRoute(accessToken: token, routeId: routeId);
+  }
+
+  Future<void> deleteAdminRoute(int routeId) async {
+    final token = _requireToken();
+    return _api.deleteAdminRoute(accessToken: token, routeId: routeId);
   }
 
   String _requireToken() {

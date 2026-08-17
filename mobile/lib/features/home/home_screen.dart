@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/models.dart';
 import '../../core/theme.dart';
+import '../../widgets/route_preview_sheet.dart';
+import '../../widgets/route_result_card.dart';
 import '../auth/auth_controller.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,24 +19,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  BaseMapData? _map;
+  final _searchController = TextEditingController();
+  Timer? _searchDebounce;
+
   List<RunItem> _runs = const [];
   List<ManualRouteItem> _communityRoutes = const [];
-  
+  Set<int> _favoriteRouteIds = <int>{};
+
   String _communitySearch = '';
   String _communitySort = 'newest';
-  
-  // ตัวแปรสำหรับ Filter สถิติ (ตั้งค่าเริ่มต้นเป็น 'week')
-  String _statsFilter = 'week'; 
+
+  // Defaults to 'week' so the dashboard opens on the most relevant range.
+  String _statsFilter = 'week';
 
   String? _error;
   bool _isLoadingCommunity = false;
   bool _isLoadingStats = true;
-
-  // Green Theme Colors
-  final Color _primaryGreen = Colors.green.shade600;
-  final Color _lightGreen = Colors.green.shade50;
-  final Color _borderColor = Colors.green.shade200;
 
   @override
   void initState() {
@@ -41,15 +43,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadCommunityRoutes();
   }
 
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     setState(() => _isLoadingStats = true);
     try {
-      final map = await widget.controller.getBaseMap();
       final runs = widget.controller.isAuthenticated ? await widget.controller.getRuns() : const <RunItem>[];
+      final favorites = widget.controller.isAuthenticated
+          ? await widget.controller.getFavoriteRoutes()
+          : const <ManualRouteItem>[];
       if (!mounted) return;
       setState(() {
-        _map = map;
         _runs = runs;
+        _favoriteRouteIds = favorites.map((route) => route.id).toSet();
         _error = null;
         _isLoadingStats = false;
       });
@@ -82,6 +93,80 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _onSearchChanged(String value) {
+    _communitySearch = value;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 400), _loadCommunityRoutes);
+    setState(() {});
+  }
+
+  void _clearSearch() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    _communitySearch = '';
+    _loadCommunityRoutes();
+  }
+
+  Future<void> _toggleFavorite(ManualRouteItem route) async {
+    if (!widget.controller.isAuthenticated) {
+      widget.onNavigate(4);
+      return;
+    }
+    final wasFavorited = _favoriteRouteIds.contains(route.id);
+    setState(() {
+      if (wasFavorited) {
+        _favoriteRouteIds.remove(route.id);
+      } else {
+        _favoriteRouteIds.add(route.id);
+      }
+    });
+    try {
+      await widget.controller.favoriteManualRoute(routeId: route.id, favorite: !wasFavorited);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        if (wasFavorited) {
+          _favoriteRouteIds.add(route.id);
+        } else {
+          _favoriteRouteIds.remove(route.id);
+        }
+        _error = '$error';
+      });
+    }
+  }
+
+  Future<void> _startRunOnRoute(ManualRouteItem route) async {
+    if (!widget.controller.isAuthenticated) {
+      widget.onNavigate(4);
+      return;
+    }
+    setState(() => _isLoadingCommunity = true);
+    try {
+      await widget.controller.startRun(
+        manualRouteId: route.id,
+        notes: 'Following shared route: ${route.name}',
+      );
+      if (!mounted) return;
+      widget.onNavigate(2);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = '$error');
+    } finally {
+      if (mounted) setState(() => _isLoadingCommunity = false);
+    }
+  }
+
+  void _openRoutePreview(ManualRouteItem route) {
+    showRoutePreviewSheet(
+      context,
+      route: route,
+      isFavorited: _favoriteRouteIds.contains(route.id),
+      isAuthenticated: widget.controller.isAuthenticated,
+      onToggleFavorite: () => _toggleFavorite(route),
+      onRun: () => _startRunOnRoute(route),
+    );
+  }
+
   String _formatDuration(int totalSeconds) {
     if (totalSeconds == 0) return '0h 0m';
     final hours = totalSeconds ~/ 3600;
@@ -93,112 +178,85 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = widget.controller.currentUser;
-    
-    // Calculate Stats
+
+    // ── Calculate Stats (with a working week/month/year filter) ──
     final finishedRuns = _runs.where((run) => run.status == 'finished').toList();
-    
+
     double totalDistanceKm = 0.0;
     int totalDurationSeconds = 0;
     double totalCalories = 0.0;
     int totalRunCount = 0;
 
     final now = DateTime.now();
+    DateTime? cutoff;
+    switch (_statsFilter) {
+      case 'week':
+        cutoff = now.subtract(const Duration(days: 7));
+        break;
+      case 'month':
+        cutoff = now.subtract(const Duration(days: 30));
+        break;
+      case 'year':
+        cutoff = now.subtract(const Duration(days: 365));
+        break;
+    }
 
-    for (var run in finishedRuns) {
-      // ---------------------------------------------------------
-      // TODO: ใส่เงื่อนไข Filter วันที่ของคุณตรงนี้
-      // ตัวอย่าง: หาก RunItem ของคุณมีตัวแปรชื่อ createdAt (เป็น DateTime)
-      // ---------------------------------------------------------
-      bool isInFilterRange = true; 
-      
-      /* 
-      // เอาคอมเมนต์นี้ออกและเปลี่ยน 'run.createdAt' เป็นชื่อตัวแปรที่ถูกต้องใน Model ของคุณ
-      if (run.createdAt != null) {
-        final runDate = run.createdAt!;
-        if (_statsFilter == 'week') {
-          isInFilterRange = now.difference(runDate).inDays <= 7;
-        } else if (_statsFilter == 'month') {
-          isInFilterRange = now.difference(runDate).inDays <= 30;
-        } else if (_statsFilter == 'year') {
-          isInFilterRange = now.difference(runDate).inDays <= 365;
-        }
-      } 
-      */
-
+    for (final run in finishedRuns) {
+      final runDate = run.finishedAt ?? run.startedAt;
+      final isInFilterRange = cutoff == null || (runDate != null && runDate.isAfter(cutoff));
       if (isInFilterRange) {
         totalRunCount++;
-        totalDistanceKm += (run.distanceKm ?? 0.0);
-        totalDurationSeconds += (run.durationSeconds ?? 0);
-        totalCalories += ((run.distanceKm ?? 0.0) * 60); // Estimate: 60 kcal per km
+        totalDistanceKm += run.distanceKm;
+        totalDurationSeconds += run.durationSeconds;
+        totalCalories += run.distanceKm * 60; // Estimate: 60 kcal per km
       }
     }
 
     return RefreshIndicator(
-      color: _primaryGreen,
-      onRefresh: _load,
+      color: RunnaColors.primary,
+      onRefresh: () async {
+        await Future.wait([_load(), _loadCommunityRoutes()]);
+      },
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        padding: const EdgeInsets.all(20),
         children: [
-          // 1. Header 
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user == null ? 'Welcome!' : 'Hello, ${user.firstName}',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: _primaryGreen,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Your running dashboard & community routes',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-              ),
-            ],
+          Text(
+            user == null ? 'Welcome!' : 'Hello, ${user.firstName}',
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: RunnaColors.primaryDark),
           ),
-          
+          const SizedBox(height: 4),
+          const Text(
+            'Your running dashboard & community routes',
+            style: TextStyle(color: RunnaColors.muted, fontSize: 14),
+          ),
           const SizedBox(height: 24),
-          
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              child: Text(_error!, style: const TextStyle(color: RunnaColors.danger)),
             ),
 
-          // 2. Statistics Dashboard with Time Filter
+          // ── Statistics Dashboard with Time Filter ──
           if (_isLoadingStats)
             const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
           else
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _borderColor, width: 1.5),
-                boxShadow: [
-                  BoxShadow(color: _primaryGreen.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                ],
-              ),
-              padding: const EdgeInsets.all(20),
+            RunnaCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
+                      const Row(
                         children: [
-                          Icon(Icons.bar_chart_rounded, color: _primaryGreen),
-                          const SizedBox(width: 8),
-                          const Text('Activity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Icon(Icons.bar_chart_rounded, color: RunnaColors.primary),
+                          SizedBox(width: 8),
+                          Text('Activity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                         ],
                       ),
-                      
-                      // TIME FILTER TABS (Week / Month / Year)
                       Container(
                         decoration: BoxDecoration(
-                          color: _lightGreen,
+                          color: RunnaColors.background,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         padding: const EdgeInsets.all(4),
@@ -216,41 +274,36 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Divider(height: 1),
                   ),
-                  
-                  // Main Highlight
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
                         totalDistanceKm.toStringAsFixed(1),
-                        style: TextStyle(fontSize: 42, fontWeight: FontWeight.w800, color: Colors.grey.shade800, height: 1),
+                        style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w800, height: 1),
                       ),
                       const SizedBox(width: 6),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text('km', style: TextStyle(fontSize: 16, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 6),
+                        child: Text('km', style: TextStyle(fontSize: 16, color: RunnaColors.muted, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text('Total Distance', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-                  
+                  const Text('Total Distance', style: TextStyle(color: RunnaColors.muted, fontSize: 13)),
                   const SizedBox(height: 20),
-                  
-                  // Sub-stats Grid
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _lightGreen,
+                      color: RunnaColors.background,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildMiniStat('$totalRunCount', 'Runs', Icons.directions_run),
-                        Container(width: 1.5, height: 30, color: _borderColor),
+                        Container(width: 1.5, height: 30, color: RunnaColors.muted.withValues(alpha: 0.2)),
                         _buildMiniStat(_formatDuration(totalDurationSeconds), 'Time', Icons.timer_outlined),
-                        Container(width: 1.5, height: 30, color: _borderColor),
+                        Container(width: 1.5, height: 30, color: RunnaColors.muted.withValues(alpha: 0.2)),
                         _buildMiniStat(totalCalories.toStringAsFixed(0), 'Kcal', Icons.local_fire_department_outlined),
                       ],
                     ),
@@ -261,39 +314,39 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 32),
 
-          // 3. Community Routes Section
+          // ── Community Routes Section ──
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Community Routes',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              // Compact Sort Menu
+              const Text('Community Routes', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               PopupMenuButton<String>(
                 initialValue: _communitySort,
                 onSelected: (value) {
                   setState(() => _communitySort = value);
                   _loadCommunityRoutes();
                 },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'newest', child: Text('Newest')),
-                  const PopupMenuItem(value: 'popular', child: Text('Popular')),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: 'newest', child: Text('Newest')),
+                  PopupMenuItem(value: 'popular', child: Text('Popular')),
                 ],
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _lightGreen,
-                    border: Border.all(color: _borderColor),
+                    color: RunnaColors.background,
+                    border: Border.all(color: RunnaColors.muted.withValues(alpha: 0.2)),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      Icon(_communitySort == 'popular' ? Icons.trending_up : Icons.schedule, size: 16, color: _primaryGreen),
+                      Icon(
+                        _communitySort == 'popular' ? Icons.trending_up : Icons.schedule,
+                        size: 16,
+                        color: RunnaColors.primary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         _communitySort == 'popular' ? 'Popular' : 'Newest',
-                        style: TextStyle(color: _primaryGreen, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: RunnaColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -301,84 +354,86 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          
           const SizedBox(height: 12),
-          
-          // Search Bar
+
+          // ── Search Bar (auto-searches with a short debounce) ──
           SizedBox(
             height: 44,
             child: TextField(
-              onChanged: (value) => setState(() => _communitySearch = value),
-              onSubmitted: (_) => _loadCommunityRoutes(),
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              onSubmitted: (_) {
+                _searchDebounce?.cancel();
+                _loadCommunityRoutes();
+              },
               style: const TextStyle(fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search routes...',
-                hintStyle: TextStyle(color: Colors.grey.shade400),
-                prefixIcon: Icon(Icons.search, size: 20, color: _primaryGreen),
+                hintStyle: TextStyle(color: RunnaColors.muted.withValues(alpha: 0.7)),
+                prefixIcon: const Icon(Icons.search, size: 20, color: RunnaColors.primary),
+                suffixIcon: _communitySearch.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: _clearSearch,
+                      ),
                 contentPadding: EdgeInsets.zero,
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: RunnaColors.surface,
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(color: RunnaColors.muted.withValues(alpha: 0.25)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: _primaryGreen, width: 1.5),
+                  borderSide: const BorderSide(color: RunnaColors.primary, width: 1.5),
                 ),
               ),
             ),
           ),
-          
           const SizedBox(height: 16),
-          
-          // Community List
+
+          // ── Community List ──
           if (_isLoadingCommunity)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 30),
               child: Center(child: CircularProgressIndicator()),
             )
           else if (_communityRoutes.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: const Center(
-                child: Text('No routes found. Be the first to share one!'),
+            RunnaCard(
+              child: Center(
+                child: Text(
+                  _communitySearch.isEmpty
+                      ? 'No routes found. Be the first to share one!'
+                      : 'No routes match "$_communitySearch".',
+                  style: const TextStyle(color: RunnaColors.muted),
+                ),
               ),
             )
           else
             ..._communityRoutes.map((route) => _buildCommunityCard(route)),
-            
+
           const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  // Helper Widget: สร้างปุ่มเลือกช่วงเวลา (Week/Month/Year)
   Widget _buildFilterTab(String label, String value) {
     final isSelected = _statsFilter == value;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _statsFilter = value;
-        });
-      },
+      onTap: () => setState(() => _statsFilter = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryGreen : Colors.transparent,
+          color: isSelected ? RunnaColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : _primaryGreen,
+            color: isSelected ? Colors.white : RunnaColors.primary,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 12,
           ),
@@ -387,132 +442,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Helper for Dashboard Mini Stats
   Widget _buildMiniStat(String value, String label, IconData icon) {
     return Column(
       children: [
-        Icon(icon, size: 20, color: _primaryGreen),
+        Icon(icon, size: 20, color: RunnaColors.primary),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(fontSize: 11, color: RunnaColors.muted)),
       ],
     );
   }
 
-  // Helper for Community Cards
   Widget _buildCommunityCard(ManualRouteItem route) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _borderColor.withOpacity(0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: _lightGreen,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.map_rounded, color: _primaryGreen, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      route.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'By ${route.creatorFullName ?? 'Unknown'} • ${route.runCount} runs',
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _primaryGreen,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${route.distanceKm.toStringAsFixed(1)} km',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                onPressed: () => widget.onNavigate(1),
-                icon: Icon(Icons.visibility_outlined, size: 18, color: Colors.grey.shade700),
-                label: Text('Map', style: TextStyle(color: Colors.grey.shade700)),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: () async {
-                  if (!widget.controller.isAuthenticated) {
-                    widget.onNavigate(4);
-                    return;
-                  }
-                  setState(() => _isLoadingCommunity = true);
-                  try {
-                    await widget.controller.startRun(
-                      manualRouteId: route.id,
-                      notes: 'Following shared route: ${route.name}',
-                    );
-                    if (!mounted) return;
-                    widget.onNavigate(2);
-                  } catch (error) {
-                    if (!mounted) return;
-                    setState(() => _error = '$error');
-                  } finally {
-                    if (mounted) setState(() => _isLoadingCommunity = false);
-                  }
-                },
-                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                label: const Text('Run'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _primaryGreen,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  minimumSize: const Size(0, 36),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: RouteResultCard(
+        route: route,
+        isFavorited: _favoriteRouteIds.contains(route.id),
+        onToggleFavorite: () => _toggleFavorite(route),
+        onViewMap: () => _openRoutePreview(route),
+        onRun: () => _startRunOnRoute(route),
       ),
     );
   }

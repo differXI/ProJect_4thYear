@@ -30,6 +30,7 @@ class ManualRouteResponse(BaseModel):
     creator_full_name: str | None = None
     creator_province: str | None = None
     run_count: int = 0
+    is_favorited: bool = False
     validation: ManualRouteValidation
 
     model_config = ConfigDict(from_attributes=True)

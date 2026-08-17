@@ -50,6 +50,9 @@ class HazardMarkerResponse(BaseModel):
     confirm_count: int
     dismiss_count: int
     expires_at: str | None = None
+    created_at: str | None = None
+    reporter_name: str | None = None
+    is_mine: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

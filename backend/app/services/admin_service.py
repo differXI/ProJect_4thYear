@@ -3,6 +3,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from sqlalchemy import update
+
 from app.models.hazard_marker import HazardMarker
 from app.models.manual_route import ManualRoute
 from app.models.map_edge import MapEdge
@@ -161,3 +163,31 @@ class AdminService:
         """Triggers geo-spatial data pipeline mapping sequences."""
         MapService(self.db).ensure_seed_map()
         return {"status": "seed map ready"}
+
+    def list_routes(self, shared_only: bool = False) -> list[ManualRoute]:
+        """Lists community manual routes for moderation, newest first."""
+        statement = select(ManualRoute).order_by(ManualRoute.created_at.desc())
+        if shared_only:
+            statement = statement.where(ManualRoute.is_shared.is_(True))
+        return list(self.db.scalars(statement).all())
+
+    def unpublish_route(self, route_id: int) -> ManualRoute:
+        """Removes a route from the public community list without deleting it."""
+        route = self.db.get(ManualRoute, route_id)
+        if route is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+        route.is_shared = False
+        route.shared_at = None
+        self.db.add(route)
+        self.db.commit()
+        self.db.refresh(route)
+        return route
+
+    def delete_route(self, route_id: int) -> None:
+        """Permanently deletes a route, detaching any runs that reference it."""
+        route = self.db.get(ManualRoute, route_id)
+        if route is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
+        self.db.execute(update(Run).where(Run.manual_route_id == route_id).values(manual_route_id=None))
+        self.db.delete(route)
+        self.db.commit()

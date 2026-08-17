@@ -46,6 +46,8 @@ class _RunnaAppState extends State<RunnaApp> {
     }
   }
 
+  void _navigateToTab(int index) => setState(() => _currentIndex = index);
+
   @override
   Widget build(BuildContext context) {
       if (_controller.isRestoring) {
@@ -82,8 +84,8 @@ class _RunnaAppState extends State<RunnaApp> {
     ];
 
     final pages = <Widget>[
-      HomeScreen(controller: _controller, onNavigate: (index) => setState(() => _currentIndex = index)),
-      RoutesScreen(controller: _controller),
+      HomeScreen(controller: _controller, onNavigate: _navigateToTab),
+      RoutesScreen(controller: _controller, onNavigate: _navigateToTab),
       RunsScreen(controller: _controller),
       HazardsScreen(controller: _controller),
       AuthScreen(controller: _controller),

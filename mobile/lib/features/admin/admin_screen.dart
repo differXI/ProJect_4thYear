@@ -17,10 +17,12 @@ class _AdminScreenState extends State<AdminScreen> {
   AdminStats? _stats;
   List<AdminUserItem> _users = const [];
   List<HazardMarkerItem> _markers = const [];
+  List<ManualRouteItem> _routes = const [];
 
   String? _statsError;
   String? _usersError;
   String? _markersError;
+  String? _routesError;
   String? _actionMessage;
 
   bool _isLoading = false;
@@ -39,12 +41,14 @@ class _AdminScreenState extends State<AdminScreen> {
       _statsError = null;
       _usersError = null;
       _markersError = null;
+      _routesError = null;
     });
 
     await Future.wait([
       _loadStats(),
       _loadUsers(),
       _loadMarkers(),
+      _loadRoutes(),
     ]);
 
     if (mounted) setState(() => _isLoading = false);
@@ -83,6 +87,17 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  Future<void> _loadRoutes() async {
+    try {
+      final routes = await widget.controller.getAdminRoutes();
+      if (!mounted) return;
+      setState(() => _routes = routes);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _routesError = '$error');
+    }
+  }
+
   Future<void> _toggleUser(AdminUserItem user) async {
     setState(() => _isActing = true);
     try {
@@ -118,6 +133,57 @@ class _AdminScreenState extends State<AdminScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _actionMessage = '$error');
+    } finally {
+      if (mounted) setState(() => _isActing = false);
+    }
+  }
+
+  Future<void> _unpublishRoute(ManualRouteItem route) async {
+    setState(() => _isActing = true);
+    try {
+      await widget.controller.unpublishAdminRoute(route.id);
+      setState(() => _actionMessage = 'Route unpublished successfully');
+      await _loadRoutes();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _actionMessage = 'Failed to unpublish route: $error');
+    } finally {
+      if (mounted) setState(() => _isActing = false);
+    }
+  }
+
+  Future<void> _deleteRoute(ManualRouteItem route) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete route'),
+        content: Text(
+          'Are you sure you want to permanently delete "${route.name}"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (!mounted) return;
+    setState(() => _isActing = true);
+    try {
+      await widget.controller.deleteAdminRoute(route.id);
+      setState(() => _actionMessage = 'Route deleted successfully');
+      await _loadRoutes();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _actionMessage = 'Failed to delete route: $error');
     } finally {
       if (mounted) setState(() => _isActing = false);
     }
@@ -253,6 +319,58 @@ class _AdminScreenState extends State<AdminScreen> {
                       icon: const Icon(Icons.delete_outline, color: RunnaColors.danger),
                       onPressed: _isActing ? null : () => _removeMarker(marker),
                     ),
+                  ),
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 20),
+          const SectionTitle('Manage community routes'),
+          if (_routes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '${_routes.length} public routes',
+                style: const TextStyle(color: RunnaColors.muted, fontSize: 12),
+              ),
+            ),
+          const SizedBox(height: 12),
+          if (_routesError != null)
+            _ErrorCard(message: 'Routes failed to load: $_routesError', onRetry: _loadRoutes)
+          else if (_routes.isEmpty)
+            const RunnaCard(child: Text('No community routes to manage.'))
+          else
+            ..._routes.map(
+              (route) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: RunnaCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(route.name),
+                        subtitle: Text(
+                          '${route.distanceKm.toStringAsFixed(2)} km • '
+                          '${route.creatorFullName ?? 'Unknown creator'}',
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.lock_outline),
+                            label: const Text('Unpublish'),
+                            onPressed: _isActing ? null : () => _unpublishRoute(route),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton.tonal(
+                            onPressed: _isActing ? null : () => _deleteRoute(route),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),

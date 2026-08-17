@@ -301,30 +301,82 @@ class _AuthScreenState extends State<AuthScreen>
     final user = widget.controller.currentUser;
 
     if (user != null) {
+      final initials = '${user.firstName.isNotEmpty ? user.firstName[0] : ''}${user.lastName.isNotEmpty ? user.lastName[0] : ''}'.toUpperCase();
+
       return ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const SectionTitle('Account', subtitle: 'Your Runna member profile'),
+          const SectionTitle('Account', subtitle: 'Your profile'),
           const SizedBox(height: 16),
           RunnaCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  user.fullName,
-                  style: Theme.of(context).textTheme.headlineSmall,
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: RunnaColors.primary.withValues(alpha: 0.12),
+                      child: Text(
+                        initials.isEmpty ? 'R' : initials,
+                        style: const TextStyle(
+                          color: RunnaColors.primaryDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.fullName,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '@${user.username}',
+                            style: TextStyle(
+                              color: RunnaColors.muted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text('@${user.username} • ${user.email}'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 18),
                 Chip(
                   label: Text(user.roleName.toUpperCase()),
-                  backgroundColor: RunnaColors.accent.withValues(alpha: 0.25),
+                  backgroundColor: RunnaColors.accent.withValues(alpha: 0.18),
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 16),
-                FilledButton.tonal(
-                  onPressed: widget.controller.logout,
-                  child: const Text('Sign out'),
+                const SizedBox(height: 18),
+                const Divider(),
+                const SizedBox(height: 8),
+                _AccountInfoRow(
+                  icon: Icons.email_outlined,
+                  label: 'Email',
+                  value: user.email,
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonal(
+                    onPressed: widget.controller.logout,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.logout_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Sign out'),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -437,6 +489,47 @@ class _AuthScreenState extends State<AuthScreen>
           child: Text(
             'Guests can browse the map and hazard pins without signing in. '
             'Create an account to save routes, track runs, and receive AI insights.',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountInfoRow extends StatelessWidget {
+  const _AccountInfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: RunnaColors.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: RunnaColors.muted,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
           ),
         ),
       ],

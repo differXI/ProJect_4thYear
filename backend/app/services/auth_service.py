@@ -16,6 +16,7 @@ from app.services.email_service import EmailService
 from app.services.security import create_access_token, decode_access_token, hash_password, verify_password
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 
 class AuthService:
@@ -184,3 +185,18 @@ def get_current_user(
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
     return user
+
+
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Like get_current_user, but returns None instead of raising when no/invalid token is given."""
+    if credentials is None:
+        return None
+    try:
+        payload = decode_access_token(credentials.credentials)
+        user = db.get(User, int(payload["sub"]))
+    except Exception:
+        return None
+    return user if user is not None and user.is_active else None

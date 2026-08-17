@@ -7,6 +7,7 @@ from app.models.password_reset_code import PasswordResetCode
 from app.models.pin_validation import PinValidation
 from app.models.route_plan import RoutePlan
 from app.models.role import Role
+from app.models.route_favorite import RouteFavorite
 from app.models.run import Run, RunPoint
 from app.models.user import User
 
@@ -20,6 +21,7 @@ __all__ = [
     "PinValidation",
     "RoutePlan",
     "Role",
+    "RouteFavorite",
     "Run",
     "RunPoint",
     "User",

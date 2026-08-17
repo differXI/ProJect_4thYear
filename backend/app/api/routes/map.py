@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.models.user import User
 from app.schemas.manual_route import ManualRouteCreate, ManualRouteResponse
-from app.schemas.map import BaseMapResponse, HazardMarkerCreate, HazardMarkerResponse, MapEdgeResponse, MapNodeResponse
-from app.schemas.serializers import manual_route_to_response
-from app.services.auth_service import get_current_user
+from app.schemas.map import BaseMapResponse, HazardMarkerCreate, HazardMarkerResponse, HazardMarkerValidate, MapEdgeResponse, MapNodeResponse
+from app.schemas.serializers import hazard_marker_to_response, manual_route_to_response
+from app.services.auth_service import get_current_user, get_current_user_optional
 from fastapi import Query, Depends, HTTPException, status
 from app.services.map_service import MapService
 from app.services.admin_service import AdminService
@@ -14,44 +15,35 @@ from app.services.admin_service import AdminService
 router = APIRouter()
 
 
-def _marker_response(marker) -> HazardMarkerResponse:
-    expires_at = None
-    if marker.expires_at is not None:
-        expires_at = marker.expires_at.isoformat()
-    return HazardMarkerResponse(
-        id=marker.id,
-        user_id=marker.user_id,
-        marker_type=marker.marker_type,
-        severity=marker.severity,
-        lat=marker.lat,
-        lng=marker.lng,
-        note=marker.note,
-        status=marker.status,
-        confirm_count=marker.confirm_count,
-        dismiss_count=marker.dismiss_count,
-        expires_at=expires_at,
-    )
+def _marker_response(marker, viewer: User | None = None) -> HazardMarkerResponse:
+    return hazard_marker_to_response(marker, viewer_id=viewer.id if viewer else None)
 
 
 @router.get("/", response_model=BaseMapResponse)
-def get_base_map(db: Session = Depends(get_db)) -> BaseMapResponse:
+def get_base_map(
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+) -> BaseMapResponse:
     service = MapService(db)
     nodes, edges, markers = service.get_base_map()
     return BaseMapResponse(
         nodes=[MapNodeResponse.model_validate(node) for node in nodes],
         edges=[MapEdgeResponse.model_validate(edge) for edge in edges],
-        markers=[_marker_response(marker) for marker in markers],
+        markers=[_marker_response(marker, viewer) for marker in markers],
     )
 
 
 @router.get("/base", response_model=BaseMapResponse)
-def get_base_map_alias(db: Session = Depends(get_db)) -> BaseMapResponse:
+def get_base_map_alias(
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+) -> BaseMapResponse:
     service = MapService(db)
     nodes, edges, markers = service.get_base_map()
     return BaseMapResponse(
         nodes=[MapNodeResponse.model_validate(node) for node in nodes],
         edges=[MapEdgeResponse.model_validate(edge) for edge in edges],
-        markers=[_marker_response(marker) for marker in markers],
+        markers=[_marker_response(marker, viewer) for marker in markers],
     )
 
 
@@ -70,10 +62,23 @@ def import_map(
 
 
 @router.get("/markers", response_model=list[HazardMarkerResponse])
-def list_markers(db: Session = Depends(get_db)) -> list[HazardMarkerResponse]:
+def list_markers(
+    db: Session = Depends(get_db),
+    viewer: User | None = Depends(get_current_user_optional),
+) -> list[HazardMarkerResponse]:
     service = MapService(db)
     markers = service.list_markers()
-    return [_marker_response(marker) for marker in markers]
+    return [_marker_response(marker, viewer) for marker in markers]
+
+
+@router.get("/markers/mine", response_model=list[HazardMarkerResponse])
+def list_my_markers(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[HazardMarkerResponse]:
+    service = MapService(db)
+    markers = service.list_my_markers(current_user.id)
+    return [_marker_response(marker, current_user) for marker in markers]
 
 
 @router.post("/markers", response_model=HazardMarkerResponse, status_code=201)
@@ -84,7 +89,29 @@ def create_marker(
 ) -> HazardMarkerResponse:
     service = MapService(db)
     marker = service.create_marker(current_user, payload)
-    return _marker_response(marker)
+    return _marker_response(marker, current_user)
+
+
+@router.post("/markers/{marker_id}/validate", response_model=HazardMarkerResponse)
+def validate_marker(
+    marker_id: int,
+    payload: HazardMarkerValidate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> HazardMarkerResponse:
+    service = MapService(db)
+    marker = service.validate_marker(current_user, marker_id, payload.confirmed)
+    return _marker_response(marker, current_user)
+
+
+@router.delete("/markers/{marker_id}", status_code=204)
+def delete_my_marker(
+    marker_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    service = MapService(db)
+    service.delete_own_marker(current_user, marker_id)
 
 
 @router.get("/manual-routes", response_model=list[ManualRouteResponse])
@@ -119,6 +146,28 @@ def share_manual_route(
     service = MapService(db)
     route = service.share_manual_route(current_user, route_id, share)
     return manual_route_to_response(route)
+
+
+@router.get("/manual-routes/favorites", response_model=list[ManualRouteResponse])
+def list_favorite_routes(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ManualRouteResponse]:
+    service = MapService(db)
+    routes = service.list_favorite_routes(current_user.id)
+    return [manual_route_to_response(route, is_favorited=True) for route in routes]
+
+
+@router.put("/manual-routes/{route_id}/favorite", response_model=ManualRouteResponse)
+def favorite_manual_route(
+    route_id: int,
+    favorite: bool = Query(True),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ManualRouteResponse:
+    service = MapService(db)
+    route = service.favorite_manual_route(current_user, route_id, favorite)
+    return manual_route_to_response(route, is_favorited=favorite)
 
 
 @router.post("/manual-routes", response_model=ManualRouteResponse, status_code=201)

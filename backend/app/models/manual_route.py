@@ -22,6 +22,7 @@ class ManualRoute(TimestampMixin, Base):
     validation_json: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     user = relationship("User", back_populates="manual_routes")
+    favorited_by = relationship("RouteFavorite", back_populates="manual_route", cascade="all, delete-orphan")
 
     @property
     def validation(self) -> dict[str, int | str]:

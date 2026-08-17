@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.schemas.manual_route import ManualRouteResponse
 from app.schemas.map import HazardMarkerResponse
+from app.schemas.serializers import hazard_marker_to_response, manual_route_to_response
 from app.schemas.user import AdminStatsResponse, AdminUserResponse, AdminUserUpdate
 from app.services.admin_service import AdminService
 from app.services.auth_service import get_current_user
@@ -11,22 +13,7 @@ router = APIRouter()
 
 
 def _marker_response(marker) -> HazardMarkerResponse:
-    expires_at = None
-    if marker.expires_at is not None:
-        expires_at = marker.expires_at.isoformat()
-    return HazardMarkerResponse(
-        id=marker.id,
-        user_id=marker.user_id,
-        marker_type=marker.marker_type,
-        severity=marker.severity,
-        lat=marker.lat,
-        lng=marker.lng,
-        note=marker.note,
-        status=marker.status,
-        confirm_count=marker.confirm_count,
-        dismiss_count=marker.dismiss_count,
-        expires_at=expires_at,
-    )
+    return hazard_marker_to_response(marker)
 
 
 @router.get("/stats", response_model=AdminStatsResponse)
@@ -96,3 +83,38 @@ def delete_marker(
     service.require_admin(current_user)
     service.delete_marker(marker_id)
     return {"status": "removed", "marker_id": marker_id}
+
+
+@router.get("/routes", response_model=list[ManualRouteResponse])
+def list_routes(
+    shared_only: bool = Query(default=False),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ManualRouteResponse]:
+    service = AdminService(db)
+    service.require_admin(current_user)
+    routes = service.list_routes(shared_only)
+    return [manual_route_to_response(route) for route in routes]
+
+
+@router.put("/routes/{route_id}/unpublish", response_model=ManualRouteResponse)
+def unpublish_route(
+    route_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ManualRouteResponse:
+    service = AdminService(db)
+    service.require_admin(current_user)
+    route = service.unpublish_route(route_id)
+    return manual_route_to_response(route)
+
+
+@router.delete("/routes/{route_id}", status_code=204)
+def delete_route(
+    route_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    service = AdminService(db)
+    service.require_admin(current_user)
+    service.delete_route(route_id)

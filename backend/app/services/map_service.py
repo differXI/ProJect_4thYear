@@ -7,16 +7,19 @@ try:
 except ImportError:  # pragma: no cover - optional import path for OSM import endpoint
     overpy = None
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select, update, func
+from sqlalchemy import delete, or_, select, update, func
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.config import settings
 from app.models.hazard_marker import HazardMarker
 from app.models.map_edge import MapEdge
 from app.models.map_node import MapNode
 from app.models.manual_route import ManualRoute
+from app.models.pin_validation import PinValidation
+from app.models.route_favorite import RouteFavorite
 from app.models.run import Run
 from app.models.user import User
 from app.schemas.manual_route import ManualRouteCreate
@@ -200,6 +203,7 @@ class MapService:
             lng=payload.lng,
             note=payload.note,
             status="active",
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.pin_expiry_hours),
         )
         self.db.add(marker)
         self.db.commit()
@@ -208,13 +212,69 @@ class MapService:
 
     def list_markers(self) -> list[HazardMarker]:
         self.ensure_seed_map()
+        now = datetime.now(timezone.utc)
         return list(
             self.db.scalars(
                 select(HazardMarker)
-                .where(HazardMarker.status != "removed")
+                .where(
+                    HazardMarker.status != "removed",
+                    or_(HazardMarker.expires_at.is_(None), HazardMarker.expires_at > now),
+                )
                 .order_by(HazardMarker.created_at.desc())
             ).all()
         )
+
+    def list_my_markers(self, user_id: int) -> list[HazardMarker]:
+        return list(
+            self.db.scalars(
+                select(HazardMarker)
+                .where(HazardMarker.user_id == user_id, HazardMarker.status != "removed")
+                .order_by(HazardMarker.created_at.desc())
+            ).all()
+        )
+
+    def delete_own_marker(self, user: User, marker_id: int) -> None:
+        marker = self.db.get(HazardMarker, marker_id)
+        if marker is None or marker.user_id != user.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pin not found")
+        marker.status = "removed"
+        self.db.add(marker)
+        self.db.commit()
+
+    def validate_marker(self, user: User, marker_id: int, confirmed: bool) -> HazardMarker:
+        marker = self.db.get(HazardMarker, marker_id)
+        if marker is None or marker.status == "removed":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pin not found")
+
+        existing_vote = self.db.scalar(
+            select(PinValidation).where(
+                PinValidation.marker_id == marker_id,
+                PinValidation.user_id == user.id,
+            )
+        )
+        if existing_vote is None:
+            self.db.add(PinValidation(marker_id=marker_id, user_id=user.id, confirmed=confirmed))
+        else:
+            existing_vote.confirmed = confirmed
+            self.db.add(existing_vote)
+        self.db.commit()
+
+        marker.confirm_count = self.db.scalar(
+            select(func.count(PinValidation.id)).where(
+                PinValidation.marker_id == marker_id, PinValidation.confirmed.is_(True)
+            )
+        ) or 0
+        marker.dismiss_count = self.db.scalar(
+            select(func.count(PinValidation.id)).where(
+                PinValidation.marker_id == marker_id, PinValidation.confirmed.is_(False)
+            )
+        ) or 0
+        if marker.dismiss_count >= settings.pin_dismiss_removal_threshold:
+            marker.status = "removed"
+        self.db.add(marker)
+        self.db.commit()
+        self.db.refresh(marker)
+        return marker
 
     def create_manual_route(self, user: User, payload: ManualRouteCreate) -> ManualRoute:
         # Ensure map is loaded
@@ -318,7 +378,7 @@ class MapService:
         if search:
             q = f"%{search.lower()}%"
             stmt = stmt.join(User, ManualRoute.user).where(
-                func.or_(
+                or_(
                     func.lower(ManualRoute.name).like(q),
                     func.lower(User.first_name).like(q),
                     func.lower(User.last_name).like(q),
@@ -366,6 +426,48 @@ class MapService:
         )
         self.db.delete(route)
         self.db.commit()
+
+    def favorite_manual_route(self, user: User, route_id: int, favorite: bool = True) -> ManualRoute:
+        route = self.db.get(ManualRoute, route_id)
+        if route is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Route not found')
+
+        existing = self.db.scalar(
+            select(RouteFavorite).where(
+                RouteFavorite.user_id == user.id,
+                RouteFavorite.manual_route_id == route_id,
+            )
+        )
+        if favorite and existing is None:
+            self.db.add(RouteFavorite(user_id=user.id, manual_route_id=route_id))
+            self.db.commit()
+        elif not favorite and existing is not None:
+            self.db.delete(existing)
+            self.db.commit()
+
+        self.db.refresh(route)
+        setattr(route, 'is_favorited', favorite)
+        return route
+
+    def list_favorite_routes(self, user_id: int) -> list[ManualRoute]:
+        stmt = (
+            select(
+                ManualRoute,
+                func.count(Run.id).label('run_count'),
+            )
+            .join(RouteFavorite, RouteFavorite.manual_route_id == ManualRoute.id)
+            .outerjoin(Run, Run.manual_route_id == ManualRoute.id)
+            .where(RouteFavorite.user_id == user_id)
+            .group_by(ManualRoute.id, RouteFavorite.created_at)
+            .order_by(RouteFavorite.created_at.desc())
+        )
+        results = self.db.execute(stmt).all()
+        routes: list[ManualRoute] = []
+        for route, run_count in results:
+            setattr(route, 'run_count', int(run_count or 0))
+            setattr(route, 'is_favorited', True)
+            routes.append(route)
+        return routes
 
     def _edge(
         self,

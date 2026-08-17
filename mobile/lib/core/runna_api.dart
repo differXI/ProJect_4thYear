@@ -216,6 +216,33 @@ class RunnaApi {
     );
   }
 
+  Future<ManualRouteItem> favoriteManualRoute({
+    required String accessToken,
+    required int routeId,
+    bool favorite = true,
+  }) async {
+    final response = await _client.put(
+      _uri('/map/manual-routes/$routeId/favorite?favorite=$favorite'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    return ManualRouteItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<List<ManualRouteItem>> getFavoriteRoutes(String accessToken) async {
+    final response = await _client.get(
+      _uri('/map/manual-routes/favorites'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    final body = jsonDecode(response.body) as List<dynamic>;
+    return body
+        .map((item) => ManualRouteItem.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<ManualRouteItem> createManualRoute({
     required String accessToken,
     required String name,
@@ -434,6 +461,66 @@ class RunnaApi {
   }) async {
     final response = await _client.delete(
       _uri('/admin/markers/$markerId'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+  }
+
+  Future<List<ManualRouteItem>> getAdminRoutes(String accessToken) async {
+    final response = await _client.get(
+      _uri('/admin/routes'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    final body = jsonDecode(response.body) as List<dynamic>;
+    return body
+        .map((item) => ManualRouteItem.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ManualRouteItem> unpublishAdminRoute({
+    required String accessToken,
+    required int routeId,
+  }) async {
+    final response = await _client.put(
+      _uri('/admin/routes/$routeId/unpublish'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    return ManualRouteItem.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<void> deleteAdminRoute({
+    required String accessToken,
+    required int routeId,
+  }) async {
+    final response = await _client.delete(
+      _uri('/admin/routes/$routeId'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+  }
+
+  Future<List<HazardMarkerItem>> getMyMarkers(String accessToken) async {
+    final response = await _client.get(
+      _uri('/map/markers/mine'),
+      headers: _jsonHeaders(accessToken),
+    );
+    _ensureSuccess(response);
+    final body = jsonDecode(response.body) as List<dynamic>;
+    return body
+        .map((item) => HazardMarkerItem.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> deleteMarker({
+    required String accessToken,
+    required int markerId,
+  }) async {
+    final response = await _client.delete(
+      _uri('/map/markers/$markerId'),
       headers: _jsonHeaders(accessToken),
     );
     _ensureSuccess(response);

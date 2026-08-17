@@ -66,6 +66,8 @@ class _RunsScreenState extends State<RunsScreen> {
   final _locationService = LocationService();
   final _distance = const Distance();
 
+  static const _defaultCenter = LatLng(18.8059, 98.9523);
+
   // FIX: track whether map has been initialised so we never call
   // _mapController.move() before FlutterMap is ready.
   bool _mapReady = false;
@@ -234,8 +236,6 @@ class _RunsScreenState extends State<RunsScreen> {
         // The user must press "Resume GPS" intentionally. This prevents
         // double-subscription and the "stats stuck at 0" bug.
         await _resumeActiveRun(activeRun);
-      } else if (activeRun == null) {
-        _moveToRoute();
       }
     } catch (error) {
       if (!mounted) return;
@@ -486,16 +486,6 @@ class _RunsScreenState extends State<RunsScreen> {
     }
   }
 
-  void _moveToRoute() {
-    final route = _selectedRoute;
-    if (route == null || route.points.isEmpty) return;
-    // FIX: defer so FlutterMap is ready before we move.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _safeMapMove(
-          LatLng(route.points.first.lat, route.points.first.lng), 15);
-    });
-  }
-
   void _openHistorySheet() {
     showModalBottomSheet(
       context: context,
@@ -518,6 +508,44 @@ class _RunsScreenState extends State<RunsScreen> {
     );
   }
 
+  Color _hazardColorForSeverity(int severity) {
+    switch (severity) {
+      case 5:
+        return const Color(0xFFC62828);
+      case 4:
+        return const Color(0xFFE53935);
+      case 3:
+        return const Color(0xFFFFA726);
+      case 2:
+        return const Color(0xFFFFCA28);
+      default:
+        return const Color(0xFF66BB6A);
+    }
+  }
+
+  Future<void> _voteOnHazardMarker(HazardMarkerItem marker, bool confirmed) async {
+    if (!widget.controller.isAuthenticated) {
+      setState(() => _message = 'Sign in to vote on hazard pins.');
+      Navigator.of(context).maybePop();
+      return;
+    }
+
+    Navigator.of(context).maybePop();
+    setState(() => _isLoading = true);
+    try {
+      await widget.controller.validateMarker(
+        markerId: marker.id,
+        confirmed: confirmed,
+      );
+      await _loadHazardMarkers();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _message = '$error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _showHazardDetails(HazardMarkerItem marker) {
     showModalBottomSheet(
       context: context,
@@ -531,23 +559,54 @@ class _RunsScreenState extends State<RunsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              const Icon(Icons.warning_amber_rounded,
-                  color: Color(0xFFC45C4A)),
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _hazardColorForSeverity(marker.severity),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning_amber_rounded,
+                    color: Colors.white, size: 18),
+              ),
               const SizedBox(width: 8),
-              Text(
-                marker.categoryLabel,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
+              Expanded(
+                child: Text(
+                  marker.categoryLabel,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
             ]),
             const SizedBox(height: 8),
             Text(
-                'Severity: ${marker.severity} • Confirms: ${marker.confirmCount}'),
+              'Severity: ${marker.severity} • Confirms: ${marker.confirmCount} • Disagrees: ${marker.dismissCount}',
+            ),
             if (marker.note != null && marker.note!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(marker.note!),
+            ],
+            if (widget.controller.isAuthenticated) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isLoading ? null : () => _voteOnHazardMarker(marker, true),
+                      child: const Text('Confirm'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.tonal(
+                      onPressed: _isLoading ? null : () => _voteOnHazardMarker(marker, false),
+                      child: const Text('Disagree'),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ],
         ),
@@ -572,11 +631,29 @@ class _RunsScreenState extends State<RunsScreen> {
     final hazardMapMarkers = _hazardMarkers
         .map((m) => Marker(
               point: LatLng(m.lat, m.lng),
-              width: 36,
-              height: 36,
+              width: 42,
+              height: 42,
               child: GestureDetector(
                 onTap: () => _showHazardDetails(m),
-                child: const _HazardPin(),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _hazardColorForSeverity(m.severity),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
               ),
             ))
         .toList();
@@ -741,83 +818,97 @@ class _RunsScreenState extends State<RunsScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: routePolyline.isNotEmpty
-                  ? routePolyline.first
-                  : const LatLng(18.8059, 98.9523),
-              initialZoom: 15,
-              // FIX: set _mapReady = true once FlutterMap fires its onMapReady
-              // callback so _safeMapMove knows it is safe to call move().
-              onMapReady: () {
-                if (mounted) setState(() => _mapReady = true);
-              },
-            ),
+          child: Stack(
             children: [
-              TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'runna_mobile',
-              ),
-              if (routePolyline.isNotEmpty)
-                PolylineLayer(polylines: [
-                  Polyline(
-                    points: routePolyline,
-                    strokeWidth: 6,
-                    color: const Color(0xFF23402B),
-                  ),
-                ]),
-              if (trackedPolyline.isNotEmpty)
-                PolylineLayer(polylines: [
-                  Polyline(
-                    points: trackedPolyline,
-                    strokeWidth: 6,
-                    color: const Color(0xFF2A9D8F),
-                  ),
-                  Polyline(
-                    points: trackedPolyline,
-                    strokeWidth: 2,
-                    color: const Color(0xFFB2DFDB),
-                    borderStrokeWidth: 0,
-                  ),
-                ]),
-              if (_trackedPoints.isNotEmpty)
-                CircleLayer(
-                  circles: _trackedPoints
-                      .map((p) => CircleMarker(
-                            point: LatLng(p.lat, p.lng),
-                            radius: 4,
-                            useRadiusInMeter: false,
-                            color: const Color(0x662A9D8F),
-                            borderColor: const Color(0xFF2A9D8F),
-                            borderStrokeWidth: 1,
-                          ))
-                      .toList(),
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _defaultCenter,
+                  initialZoom: 14,
+                  // FIX: set _mapReady = true once FlutterMap fires its onMapReady
+                  // callback so _safeMapMove knows it is safe to call move().
+                  onMapReady: () {
+                    if (mounted) setState(() => _mapReady = true);
+                  },
                 ),
-              if (currentPosition != null && currentPosition.accuracy > 0)
-                CircleLayer(circles: [
-                  CircleMarker(
-                    point: LatLng(
-                        currentPosition.latitude, currentPosition.longitude),
-                    radius: currentPosition.accuracy,
-                    useRadiusInMeter: true,
-                    color: const Color(0x222A9D8F),
-                    borderColor: const Color(0x552A9D8F),
-                    borderStrokeWidth: 1,
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'runna_mobile',
                   ),
-                ]),
-              MarkerLayer(markers: [
-                ...hazardMapMarkers,
-                if (currentPosition != null)
-                  Marker(
-                    point: LatLng(
-                        currentPosition.latitude, currentPosition.longitude),
-                    width: 48,
-                    height: 48,
-                    child: _DirectionalLocationPin(headingDeg: _headingDeg),
-                  ),
-              ]),
+                  if (routePolyline.isNotEmpty)
+                    PolylineLayer(polylines: [
+                      Polyline(
+                        points: routePolyline,
+                        strokeWidth: 6,
+                        color: const Color(0xFF23402B),
+                      ),
+                    ]),
+                  if (trackedPolyline.isNotEmpty)
+                    PolylineLayer(polylines: [
+                      Polyline(
+                        points: trackedPolyline,
+                        strokeWidth: 6,
+                        color: const Color(0xFF2A9D8F),
+                      ),
+                      Polyline(
+                        points: trackedPolyline,
+                        strokeWidth: 2,
+                        color: const Color(0xFFB2DFDB),
+                        borderStrokeWidth: 0,
+                      ),
+                    ]),
+                  if (_trackedPoints.isNotEmpty)
+                    CircleLayer(
+                      circles: _trackedPoints
+                          .map((p) => CircleMarker(
+                                point: LatLng(p.lat, p.lng),
+                                radius: 4,
+                                useRadiusInMeter: false,
+                                color: const Color(0x662A9D8F),
+                                borderColor: const Color(0xFF2A9D8F),
+                                borderStrokeWidth: 1,
+                              ))
+                          .toList(),
+                    ),
+                  if (currentPosition != null && currentPosition.accuracy > 0)
+                    CircleLayer(circles: [
+                      CircleMarker(
+                        point: LatLng(
+                            currentPosition.latitude, currentPosition.longitude),
+                        radius: currentPosition.accuracy,
+                        useRadiusInMeter: true,
+                        color: const Color(0x222A9D8F),
+                        borderColor: const Color(0x552A9D8F),
+                        borderStrokeWidth: 1,
+                      ),
+                    ]),
+                  MarkerLayer(markers: [
+                    ...hazardMapMarkers,
+                    if (currentPosition != null)
+                      Marker(
+                        point: LatLng(
+                            currentPosition.latitude, currentPosition.longitude),
+                        width: 48,
+                        height: 48,
+                        child: _DirectionalLocationPin(headingDeg: _headingDeg),
+                      ),
+                  ]),
+                ],
+              ),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: FloatingActionButton.small(
+                  heroTag: 'runs_locate_me',
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF23402B),
+                  tooltip: 'Locate me',
+                  onPressed: _isLoading ? null : _locateMe,
+                  child: const Icon(Icons.my_location),
+                ),
+              ),
             ],
           ),
         ),
@@ -825,9 +916,21 @@ class _RunsScreenState extends State<RunsScreen> {
         if (_message != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Text(_message!,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Text(
+                _message!,
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.error)),
+                  color: Colors.grey.shade800,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ),
         // ── Control card ────────────────────────────────────────────
         Container(
@@ -844,7 +947,7 @@ class _RunsScreenState extends State<RunsScreen> {
                   : 'Active run #${_activeRun!.id}'),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                value: route?.id,
+                initialValue: route?.id,
                 decoration:
                     const InputDecoration(labelText: 'Manual route'),
                 items: _manualRoutes
@@ -861,7 +964,6 @@ class _RunsScreenState extends State<RunsScreen> {
                           _selectedRoute = _manualRoutes
                               .firstWhere((r) => r.id == routeId);
                         });
-                        _moveToRoute();
                       },
               ),
               const SizedBox(height: 12),
@@ -937,26 +1039,6 @@ class _RunsScreenState extends State<RunsScreen> {
 // ─────────────────────────────────────────────────────────
 // Small reusable widgets
 // ─────────────────────────────────────────────────────────
-
-class _HazardPin extends StatelessWidget {
-  const _HazardPin();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFC45C4A),
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-              color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2))
-        ],
-      ),
-      child: const Icon(Icons.warning_amber_rounded,
-          color: Colors.white, size: 18),
-    );
-  }
-}
 
 class _MetricTile extends StatelessWidget {
   const _MetricTile({required this.label, required this.value});
