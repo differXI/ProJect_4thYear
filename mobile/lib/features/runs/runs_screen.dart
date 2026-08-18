@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/location_service.dart';
 import '../../core/models.dart';
+import '../../core/theme.dart';
 import '../auth/auth_controller.dart';
 
 // ─────────────────────────────────────────────────────────
@@ -224,11 +225,31 @@ class _RunsScreenState extends State<RunsScreen> {
           .cast<RunItem?>()
           .firstWhere((r) => r?.status == 'active', orElse: () => null);
 
+      // Check if we need to select a specific route from navigation
+      final selectedRouteId = widget.controller.selectedRouteId;
+      ManualRouteItem? selectedRoute;
+      if (selectedRouteId != null) {
+        selectedRoute = manualRoutes.cast<ManualRouteItem?>().firstWhere(
+            (r) => r?.id == selectedRouteId,
+            orElse: () => null);
+        // Clear the selectedRouteId after using it
+        widget.controller.setSelectedRouteId(null);
+      }
+
       setState(() {
         _runs = runs;
         _manualRoutes = manualRoutes;
         _activeRun = activeRun;
-        _selectedRoute = _pickSelectedRoute(manualRoutes, activeRun);
+        // Prioritize: active run > selected from navigation > current selected > first route
+        if (activeRun != null && activeRun.manualRouteId != null) {
+          _selectedRoute = manualRoutes.cast<ManualRouteItem?>().firstWhere(
+              (r) => r?.id == activeRun.manualRouteId,
+              orElse: () => _pickSelectedRoute(manualRoutes, null));
+        } else if (selectedRoute != null) {
+          _selectedRoute = selectedRoute;
+        } else {
+          _selectedRoute = _pickSelectedRoute(manualRoutes, activeRun);
+        }
       });
 
       if (activeRun != null && !wasTracking) {
@@ -282,7 +303,7 @@ class _RunsScreenState extends State<RunsScreen> {
           .firstWhere((r) => r?.id == activeRun!.manualRouteId,
               orElse: () => routes.first);
     }
-    return _selectedRoute ?? routes.first;
+    return routes.first;
   }
 
   // ── location stream ───────────────────────
@@ -553,7 +574,7 @@ class _RunsScreenState extends State<RunsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RunnaSpacing.page),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,7 +686,7 @@ class _RunsScreenState extends State<RunsScreen> {
         backgroundColor: Colors.white,
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(RunnaSpacing.page),
             children: [
               Row(children: [
                 IconButton(
@@ -796,7 +817,7 @@ class _RunsScreenState extends State<RunsScreen> {
     final canStartRun = !_isLoading && _activeRun == null && route != null;
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(RunnaSpacing.page),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -934,10 +955,10 @@ class _RunsScreenState extends State<RunsScreen> {
           ),
         // ── Control card ────────────────────────────────────────────
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(RunnaSpacing.card),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -997,8 +1018,8 @@ class _RunsScreenState extends State<RunsScreen> {
               ],
               const SizedBox(height: 12),
               Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   FilledButton.tonal(
                     onPressed: _isLoading ? null : _locateMe,
@@ -1006,7 +1027,7 @@ class _RunsScreenState extends State<RunsScreen> {
                   ),
                   FilledButton(
                     onPressed: canStartRun ? _startRun : null,
-                    child: const Text('Start route run'),
+                    child: const Text('Start run'),
                   ),
                   FilledButton.tonal(
                     onPressed: canFinishRun ? _finishRun : null,
@@ -1173,7 +1194,7 @@ class _RunHistorySheetState extends State<_RunHistorySheet> {
         ),
         const SizedBox(height: 16),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: RunnaSpacing.page),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

@@ -173,10 +173,10 @@ class _AuthScreenState extends State<AuthScreen>
             },
             child: Padding(
               padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 24,
-                bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+                left: RunnaSpacing.page,
+                right: RunnaSpacing.page,
+                top: RunnaSpacing.page,
+                bottom: MediaQuery.viewInsetsOf(context).bottom + RunnaSpacing.page,
               ),
               child: Form(
                 key: formKey,
@@ -304,7 +304,7 @@ class _AuthScreenState extends State<AuthScreen>
       final initials = '${user.firstName.isNotEmpty ? user.firstName[0] : ''}${user.lastName.isNotEmpty ? user.lastName[0] : ''}'.toUpperCase();
 
       return ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RunnaSpacing.page),
         children: [
           const SectionTitle('Account', subtitle: 'Your profile'),
           const SizedBox(height: 16),
@@ -386,7 +386,7 @@ class _AuthScreenState extends State<AuthScreen>
     }
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(RunnaSpacing.page),
       children: [
         const SectionTitle(
           'Welcome to Runna',
@@ -429,7 +429,7 @@ class _AuthScreenState extends State<AuthScreen>
         ),
         const SizedBox(height: 16),
         SizedBox(
-          height: 500,
+          height: 460,
           child: TabBarView(
             controller: _tabController,
             children: [

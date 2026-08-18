@@ -12,12 +12,19 @@ class AuthController extends ChangeNotifier {
   String? _accessToken;
   UserProfile? _currentUser;
   bool _isRestoring = true;
+  int? _selectedRouteId;
 
   String? get accessToken => _accessToken;
   UserProfile? get currentUser => _currentUser;
   bool get isAuthenticated => _accessToken != null && _currentUser != null;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
   bool get isRestoring => _isRestoring;
+  int? get selectedRouteId => _selectedRouteId;
+
+  void setSelectedRouteId(int? routeId) {
+    _selectedRouteId = routeId;
+    notifyListeners();
+  }
 
   /// Attempts to restore a previous session from the persistent storage pool.
   Future<void> restoreSession() async {

@@ -370,7 +370,7 @@ class MapService:
                 ManualRoute,
                 func.count(Run.id).label('run_count'),
             )
-            .outerjoin(Run, Run.manual_route_id == ManualRoute.id)
+            .outerjoin(Run, (Run.manual_route_id == ManualRoute.id) & (Run.status == 'finished'))
             .where(ManualRoute.is_shared == True)
             .group_by(ManualRoute.id)
         )
@@ -456,7 +456,7 @@ class MapService:
                 func.count(Run.id).label('run_count'),
             )
             .join(RouteFavorite, RouteFavorite.manual_route_id == ManualRoute.id)
-            .outerjoin(Run, Run.manual_route_id == ManualRoute.id)
+            .outerjoin(Run, (Run.manual_route_id == ManualRoute.id) & (Run.status == 'finished'))
             .where(RouteFavorite.user_id == user_id)
             .group_by(ManualRoute.id, RouteFavorite.created_at)
             .order_by(RouteFavorite.created_at.desc())

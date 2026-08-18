@@ -235,7 +235,7 @@ class _HazardsScreenState extends State<HazardsScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(RunnaSpacing.page),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -385,7 +385,7 @@ class _HazardsScreenState extends State<HazardsScreen> {
 
         // ── Report section ──────────────────────────
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(RunnaSpacing.card),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -484,15 +484,15 @@ class _HazardsScreenState extends State<HazardsScreen> {
         ),
         const SizedBox(height: 24),
 
-        // ── Community Pins Header with Sort ─────────
+        // ── Active Hazard Pins Header ───────────────
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Active community pins',
+                  'Active hazard pins',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -504,51 +504,6 @@ class _HazardsScreenState extends State<HazardsScreen> {
                   ),
                 ),
               ],
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) => setState(() => _sortBy = value),
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'newest',
-                  child: Row(
-                    children: [
-                      if (_sortBy == 'newest')
-                        const Icon(Icons.check, size: 18)
-                      else
-                        const SizedBox(width: 18),
-                      const SizedBox(width: 8),
-                      const Text('Newest'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'severity_high',
-                  child: Row(
-                    children: [
-                      if (_sortBy == 'severity_high')
-                        const Icon(Icons.check, size: 18)
-                      else
-                        const SizedBox(width: 18),
-                      const SizedBox(width: 8),
-                      const Text('High severity first'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'confirms',
-                  child: Row(
-                    children: [
-                      if (_sortBy == 'confirms')
-                        const Icon(Icons.check, size: 18)
-                      else
-                        const SizedBox(width: 18),
-                      const SizedBox(width: 8),
-                      const Text('Most confirmed'),
-                    ],
-                  ),
-                ),
-              ],
-              child: Chip(label: Text(_sortBy.replaceAll('_', ' '))),
             ),
           ],
         ),
@@ -701,8 +656,8 @@ class _HazardsScreenState extends State<HazardsScreen> {
                 : '$daysAgo days ago';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: RunnaSpacing.item),
+      padding: const EdgeInsets.all(RunnaSpacing.card),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -753,6 +708,14 @@ class _HazardsScreenState extends State<HazardsScreen> {
                         color: Colors.grey.shade600,
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Severity: ${marker.severity} • Confirms: ${marker.confirmCount} • Disagrees: ${marker.dismissCount}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -768,15 +731,18 @@ class _HazardsScreenState extends State<HazardsScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Chip(
-                label: Text('${marker.confirmCount} confirms'),
-                visualDensity: VisualDensity.compact,
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: _isLoading ? null : () => _validatePin(marker, true),
+                  child: const Text('Confirm'),
+                ),
               ),
               const SizedBox(width: 8),
-              Chip(
-                label: Text('${marker.dismissCount} disagree'),
-                backgroundColor: Colors.grey.shade200,
-                visualDensity: VisualDensity.compact,
+              Expanded(
+                child: FilledButton.tonal(
+                  onPressed: _isLoading ? null : () => _validatePin(marker, false),
+                  child: const Text('Disagree'),
+                ),
               ),
             ],
           ),
@@ -801,7 +767,7 @@ class _HazardsScreenState extends State<HazardsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RunnaSpacing.page),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -840,6 +806,14 @@ class _HazardsScreenState extends State<HazardsScreen> {
                           color: Colors.grey.shade600,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Severity: ${marker.severity} • Confirms: ${marker.confirmCount} • Disagrees: ${marker.dismissCount}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -854,9 +828,25 @@ class _HazardsScreenState extends State<HazardsScreen> {
             ],
             Row(
               children: [
-                Chip(label: Text('${marker.confirmCount} confirms')),
-                const SizedBox(width: 8),
-                Chip(label: Text('${marker.dismissCount} disagree')),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : () {
+                      _validatePin(marker, true);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Confirm'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: _isLoading ? null : () {
+                      _validatePin(marker, false);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Disagree'),
+                  ),
+                ),
               ],
             ),
           ],

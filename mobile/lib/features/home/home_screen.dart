@@ -135,25 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _startRunOnRoute(ManualRouteItem route) async {
-    if (!widget.controller.isAuthenticated) {
-      widget.onNavigate(4);
-      return;
-    }
-    setState(() => _isLoadingCommunity = true);
-    try {
-      await widget.controller.startRun(
-        manualRouteId: route.id,
-        notes: 'Following shared route: ${route.name}',
-      );
-      if (!mounted) return;
-      widget.onNavigate(2);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _error = '$error');
-    } finally {
-      if (mounted) setState(() => _isLoadingCommunity = false);
-    }
+  void _startRunOnRoute(ManualRouteItem route) {
+    // Set selected route and navigate to runs page
+    widget.controller.setSelectedRouteId(route.id);
+    widget.onNavigate(2);
   }
 
   void _openRoutePreview(ManualRouteItem route) {
@@ -218,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
         await Future.wait([_load(), _loadCommunityRoutes()]);
       },
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RunnaSpacing.page),
         children: [
           Text(
             user == null ? 'Welcome!' : 'Hello, ${user.firstName}',
@@ -229,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'Your running dashboard & community routes',
             style: TextStyle(color: RunnaColors.muted, fontSize: 14),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
@@ -312,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
           // ── Community Routes Section ──
           Row(
@@ -358,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // ── Search Bar (auto-searches with a short debounce) ──
           SizedBox(
-            height: 44,
+            height: RunnaSpacing.inputHeight,
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,

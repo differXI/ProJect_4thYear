@@ -193,7 +193,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     if (!widget.controller.isAdmin) {
       return ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RunnaSpacing.page),
         children: const [
           SectionTitle('Admin', subtitle: 'Platform monitoring and moderation'),
           SizedBox(height: 16),
@@ -207,7 +207,7 @@ class _AdminScreenState extends State<AdminScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RunnaSpacing.page),
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -390,7 +390,7 @@ class _AdminStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RunnaCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: RunnaSpacing.card, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

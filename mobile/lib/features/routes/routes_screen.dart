@@ -206,24 +206,10 @@ class _RoutesScreenState extends State<RoutesScreen> {
     }
   }
 
-  Future<void> _startRunOnFavorite(ManualRouteItem route) async {
-    setState(() {
-      _isLoading = true;
-      _message = null;
-    });
-    try {
-      await widget.controller.startRun(
-        manualRouteId: route.id,
-        notes: 'Following favorite route: ${route.name}',
-      );
-      if (!mounted) return;
-      widget.onNavigate?.call(2);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _message = '$error');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  void _startRunOnFavorite(ManualRouteItem route) {
+    // Set selected route and navigate to runs page
+    widget.controller.setSelectedRouteId(route.id);
+    widget.onNavigate?.call(2);
   }
 
   void _openFavoritesSheet() {
@@ -301,7 +287,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(RunnaSpacing.page),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,7 +482,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
         : _manualRoutes.where((route) => route.name.toLowerCase().contains(query)).toList();
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(RunnaSpacing.page),
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -694,8 +680,8 @@ class _RoutesScreenState extends State<RoutesScreen> {
               ),
               const SizedBox(height: 12),
               Wrap(
-                spacing: 10,
-                runSpacing: 10,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   FilledButton(
                     onPressed: _isLoading || !widget.controller.isAuthenticated ? null : _saveRoute,
@@ -876,7 +862,7 @@ class _FavoriteRoutesSheetState extends State<_FavoriteRoutesSheet> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        padding: const EdgeInsets.fromLTRB(RunnaSpacing.page, 16, RunnaSpacing.page, 8),
                 child: Row(
                   children: [
                     const Expanded(
@@ -903,7 +889,7 @@ class _FavoriteRoutesSheetState extends State<_FavoriteRoutesSheet> {
                       )
                     : ListView.builder(
                         controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        padding: const EdgeInsets.fromLTRB(RunnaSpacing.page, 0, RunnaSpacing.page, RunnaSpacing.page),
                         itemCount: _routes.length,
                         itemBuilder: (context, index) {
                           final route = _routes[index];

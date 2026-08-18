@@ -87,7 +87,7 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
           color: RunnaColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        padding: const EdgeInsets.fromLTRB(RunnaSpacing.page, 12, RunnaSpacing.page, RunnaSpacing.page),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,13 +187,8 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: widget.onRun,
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: Text(widget.isAuthenticated ? 'Start run on this route' : 'Sign in to run'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: RunnaColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
+                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                label: Text(widget.isAuthenticated ? 'Start run' : 'Sign in to run'),
               ),
             ),
           ],

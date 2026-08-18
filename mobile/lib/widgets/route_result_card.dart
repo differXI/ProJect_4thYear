@@ -36,7 +36,6 @@ class RouteResultCard extends StatelessWidget {
     subtitleParts.add('${route.runCount} runs');
 
     return RunnaCard(
-      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -84,34 +83,22 @@ class RouteResultCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onViewMap,
-                  icon: const Icon(Icons.map_outlined, size: 18),
+                  icon: const Icon(Icons.map_outlined, size: 16),
                   label: const Text('View map'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    minimumSize: const Size(0, 36),
-                    side: BorderSide(color: RunnaColors.muted.withValues(alpha: 0.3)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton.icon(
                   onPressed: onRun,
-                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 16),
                   label: const Text('Run'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: RunnaColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    minimumSize: const Size(0, 36),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
                 ),
               ),
             ],
