@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.com/vercel.json",
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "cd mobile && bash vercel-build.sh",
+  "outputDirectory": "mobile/build/web",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
