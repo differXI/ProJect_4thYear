@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from sqlalchemy import inspect, text
 
+from app.db.migrate import get_current_revision
 from app.db.session import SessionLocal
 
 router = APIRouter()
@@ -20,17 +21,20 @@ async def database_healthcheck() -> dict[str, str]:
         manual_route_columns = {
             column["name"] for column in inspector.get_columns("manual_routes")
         }
+        revision = get_current_revision()
         if "is_shared" not in manual_route_columns:
             return {
                 "status": "error",
                 "detail": "Missing migration 20260811_0007 (manual route sharing).",
+                "revision": revision or "unknown",
             }
         if "route_favorites" not in inspector.get_table_names():
             return {
                 "status": "error",
                 "detail": "Missing migration 20260816_0008 (route favorites).",
+                "revision": revision or "unknown",
             }
-        return {"status": "ok"}
+        return {"status": "ok", "revision": revision or "unknown"}
     except Exception as exc:
         return {"status": "error", "detail": str(exc)}
     finally:
