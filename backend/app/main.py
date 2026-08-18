@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.db.migrate import run_migrations
 from app.db.session import SessionLocal
 from app.services.seed_service import seed_initial_data
 
@@ -24,6 +25,7 @@ DEFAULT_CORS_ORIGINS = [
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    run_migrations()
     db = SessionLocal()
     try:
         seed_initial_data(db)
