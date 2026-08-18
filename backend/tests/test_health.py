@@ -11,3 +11,9 @@ def test_healthcheck() -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+
+def test_database_healthcheck() -> None:
+    response = client.get("/api/health/db")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+

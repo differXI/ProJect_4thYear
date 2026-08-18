@@ -54,13 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoadingStats = true);
     try {
       final runs = widget.controller.isAuthenticated ? await widget.controller.getRuns() : const <RunItem>[];
-      final favorites = widget.controller.isAuthenticated
-          ? await widget.controller.getFavoriteRoutes()
-          : const <ManualRouteItem>[];
       if (!mounted) return;
       setState(() {
         _runs = runs;
-        _favoriteRouteIds = favorites.map((route) => route.id).toSet();
         _error = null;
         _isLoadingStats = false;
       });
@@ -70,6 +66,19 @@ class _HomeScreenState extends State<HomeScreen> {
         _error = '$error';
         _isLoadingStats = false;
       });
+    }
+
+    if (widget.controller.isAuthenticated) {
+      try {
+        final favorites = await widget.controller.getFavoriteRoutes();
+        if (!mounted) return;
+        setState(() => _favoriteRouteIds = favorites.map((route) => route.id).toSet());
+      } catch (error) {
+        if (!mounted) return;
+        setState(() => _error = '$error');
+      }
+    } else if (mounted) {
+      setState(() => _favoriteRouteIds = <int>{});
     }
   }
 
