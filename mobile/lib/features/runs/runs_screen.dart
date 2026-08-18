@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/location_service.dart';
+import '../../core/map_fit.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../auth/auth_controller.dart';
@@ -102,6 +103,17 @@ class _RunsScreenState extends State<RunsScreen> {
     } catch (_) {
       // map not ready yet — ignore
     }
+  }
+
+  void _fitSelectedRouteOnMap() {
+    final route = _selectedRoute;
+    if (route == null || route.points.isEmpty) return;
+    if (!_mapReady || !mounted) return;
+    RunnaMapFit.safeFitCamera(
+      _mapController,
+      RunnaMapFit.toLatLngs(route.points),
+      padding: RunnaMapFit.runsMapPadding,
+    );
   }
 
   // ── helpers ──────────────────────────────
@@ -225,32 +237,46 @@ class _RunsScreenState extends State<RunsScreen> {
           .cast<RunItem?>()
           .firstWhere((r) => r?.status == 'active', orElse: () => null);
 
-      // Check if we need to select a specific route from navigation
-      final selectedRouteId = widget.controller.selectedRouteId;
+      final pendingRoute = widget.controller.takePendingRunRoute();
+      var routesList = List<ManualRouteItem>.from(manualRoutes);
+
       ManualRouteItem? selectedRoute;
-      if (selectedRouteId != null) {
-        selectedRoute = manualRoutes.cast<ManualRouteItem?>().firstWhere(
-            (r) => r?.id == selectedRouteId,
-            orElse: () => null);
-        // Clear the selectedRouteId after using it
-        widget.controller.setSelectedRouteId(null);
+      if (pendingRoute != null) {
+        selectedRoute = pendingRoute;
+        if (!routesList.any((r) => r.id == pendingRoute.id)) {
+          routesList.insert(0, pendingRoute);
+        }
+      } else {
+        final selectedRouteId = widget.controller.selectedRouteId;
+        if (selectedRouteId != null) {
+          selectedRoute = routesList.cast<ManualRouteItem?>().firstWhere(
+              (r) => r?.id == selectedRouteId,
+              orElse: () => null);
+          widget.controller.setSelectedRouteId(null);
+        }
       }
 
       setState(() {
         _runs = runs;
-        _manualRoutes = manualRoutes;
+        _manualRoutes = routesList;
         _activeRun = activeRun;
         // Prioritize: active run > selected from navigation > current selected > first route
         if (activeRun != null && activeRun.manualRouteId != null) {
-          _selectedRoute = manualRoutes.cast<ManualRouteItem?>().firstWhere(
+          _selectedRoute = routesList.cast<ManualRouteItem?>().firstWhere(
               (r) => r?.id == activeRun.manualRouteId,
-              orElse: () => _pickSelectedRoute(manualRoutes, null));
+              orElse: () => _pickSelectedRoute(routesList, null));
         } else if (selectedRoute != null) {
           _selectedRoute = selectedRoute;
         } else {
-          _selectedRoute = _pickSelectedRoute(manualRoutes, activeRun);
+          _selectedRoute = _pickSelectedRoute(routesList, activeRun);
         }
       });
+
+      if (pendingRoute != null && pendingRoute.points.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
+      } else if (selectedRoute != null && selectedRoute.points.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
+      }
 
       if (activeRun != null && !wasTracking) {
         // FIX: only restore points — do NOT auto-start the location stream.
@@ -581,8 +607,8 @@ class _RunsScreenState extends State<RunsScreen> {
           children: [
             Row(children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: _hazardColorForSeverity(marker.severity),
                   shape: BoxShape.circle,
@@ -652,8 +678,8 @@ class _RunsScreenState extends State<RunsScreen> {
     final hazardMapMarkers = _hazardMarkers
         .map((m) => Marker(
               point: LatLng(m.lat, m.lng),
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               child: GestureDetector(
                 onTap: () => _showHazardDetails(m),
                 child: Container(
@@ -849,7 +875,10 @@ class _RunsScreenState extends State<RunsScreen> {
                   // FIX: set _mapReady = true once FlutterMap fires its onMapReady
                   // callback so _safeMapMove knows it is safe to call move().
                   onMapReady: () {
-                    if (mounted) setState(() => _mapReady = true);
+                    if (mounted) {
+                      setState(() => _mapReady = true);
+                      _fitSelectedRouteOnMap();
+                    }
                   },
                 ),
                 children: [
@@ -885,7 +914,7 @@ class _RunsScreenState extends State<RunsScreen> {
                       circles: _trackedPoints
                           .map((p) => CircleMarker(
                                 point: LatLng(p.lat, p.lng),
-                                radius: 4,
+                                radius: 3.5,
                                 useRadiusInMeter: false,
                                 color: const Color(0x662A9D8F),
                                 borderColor: const Color(0xFF2A9D8F),
@@ -911,8 +940,8 @@ class _RunsScreenState extends State<RunsScreen> {
                       Marker(
                         point: LatLng(
                             currentPosition.latitude, currentPosition.longitude),
-                        width: 48,
-                        height: 48,
+                        width: 46,
+                        height: 46,
                         child: _DirectionalLocationPin(headingDeg: _headingDeg),
                       ),
                   ]),
@@ -985,6 +1014,9 @@ class _RunsScreenState extends State<RunsScreen> {
                           _selectedRoute = _manualRoutes
                               .firstWhere((r) => r.id == routeId);
                         });
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _fitSelectedRouteOnMap(),
+                        );
                       },
               ),
               const SizedBox(height: 12),
@@ -1121,8 +1153,8 @@ class _DirectionalLocationPin extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         Container(
-          width: 34,
-          height: 34,
+          width: 32,
+          height: 32,
           decoration: const BoxDecoration(
             color: Color(0x332A9D8F),
             shape: BoxShape.circle,
@@ -1131,8 +1163,8 @@ class _DirectionalLocationPin extends StatelessWidget {
         Transform.rotate(
           angle: (headingDeg ?? 0) * math.pi / 180,
           child: Container(
-            width: 28,
-            height: 28,
+            width: 26,
+            height: 26,
             decoration: BoxDecoration(
               color: const Color(0xFF2A9D8F),
               shape: BoxShape.circle,

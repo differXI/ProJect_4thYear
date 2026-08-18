@@ -136,8 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startRunOnRoute(ManualRouteItem route) {
-    // Set selected route and navigate to runs page
-    widget.controller.setSelectedRouteId(route.id);
+    widget.controller.setPendingRunRoute(route);
     widget.onNavigate(2);
   }
 

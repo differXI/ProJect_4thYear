@@ -17,18 +17,19 @@ class RunnaSpacing {
   static const card = 14.0;
   static const section = 20.0;
   static const item = 10.0;
-  static const buttonHeight = 40.0;
+  static const buttonHeight = 36.0;
   static const inputHeight = 40.0;
+  static const listButtonHeight = 32.0;
 }
 
 class RunnaTheme {
   static const _buttonTextStyle = TextStyle(
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.1,
   );
 
-  static const _buttonPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+  static const _buttonPadding = EdgeInsets.symmetric(horizontal: 14, vertical: 8);
   static const _buttonMinSize = Size(0, RunnaSpacing.buttonHeight);
 
   static ThemeData light() {
@@ -128,7 +129,7 @@ class RunnaTheme {
         style: TextButton.styleFrom(
           foregroundColor: RunnaColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          minimumSize: const Size(0, 36),
+          minimumSize: const Size(0, 34),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -138,12 +139,16 @@ class RunnaTheme {
         style: IconButton.styleFrom(
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.all(8),
-          minimumSize: const Size(36, 36),
+          minimumSize: const Size(34, 34),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
       chipTheme: const ChipThemeData(
-        labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        labelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: RunnaColors.primaryDark,
+        ),
         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       ),
       sliderTheme: const SliderThemeData(

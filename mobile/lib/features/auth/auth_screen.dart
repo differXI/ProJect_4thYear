@@ -352,8 +352,12 @@ class _AuthScreenState extends State<AuthScreen>
                 const SizedBox(height: 18),
                 Chip(
                   label: Text(user.roleName.toUpperCase()),
-                  backgroundColor: RunnaColors.accent.withValues(alpha: 0.18),
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  backgroundColor: RunnaColors.primary.withValues(alpha: 0.12),
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: RunnaColors.primaryDark,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 18),
                 const Divider(),

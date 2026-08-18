@@ -182,8 +182,8 @@ class _HazardsScreenState extends State<HazardsScreen> {
         .map(
           (marker) => Marker(
             point: LatLng(marker.lat, marker.lng),
-            width: 44,
-            height: 44,
+            width: 42,
+            height: 42,
             child: GestureDetector(
               onTap: () => _showMarkerDetails(marker),
               child: Container(
@@ -214,8 +214,8 @@ class _HazardsScreenState extends State<HazardsScreen> {
       mapMarkers.add(
         Marker(
           point: _selectedPoint!,
-          width: 40,
-          height: 40,
+          width: 38,
+          height: 38,
           child: Container(
             decoration: const BoxDecoration(
               color: RunnaColors.primary,
@@ -734,6 +734,12 @@ class _HazardsScreenState extends State<HazardsScreen> {
               Expanded(
                 child: FilledButton.tonal(
                   onPressed: _isLoading ? null : () => _validatePin(marker, true),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, RunnaSpacing.listButtonHeight),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                   child: const Text('Confirm'),
                 ),
               ),
@@ -741,6 +747,12 @@ class _HazardsScreenState extends State<HazardsScreen> {
               Expanded(
                 child: FilledButton.tonal(
                   onPressed: _isLoading ? null : () => _validatePin(marker, false),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, RunnaSpacing.listButtonHeight),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                   child: const Text('Disagree'),
                 ),
               ),

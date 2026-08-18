@@ -13,6 +13,7 @@ class AuthController extends ChangeNotifier {
   UserProfile? _currentUser;
   bool _isRestoring = true;
   int? _selectedRouteId;
+  ManualRouteItem? _pendingRunRoute;
 
   String? get accessToken => _accessToken;
   UserProfile? get currentUser => _currentUser;
@@ -20,10 +21,28 @@ class AuthController extends ChangeNotifier {
   bool get isAdmin => _currentUser?.isAdmin ?? false;
   bool get isRestoring => _isRestoring;
   int? get selectedRouteId => _selectedRouteId;
+  ManualRouteItem? get pendingRunRoute => _pendingRunRoute;
 
   void setSelectedRouteId(int? routeId) {
     _selectedRouteId = routeId;
     notifyListeners();
+  }
+
+  /// Stores a route to run when navigating from community/favorite lists.
+  /// Community routes are not in the user's own manual-routes list, so the
+  /// full route object must be passed — not just the ID.
+  void setPendingRunRoute(ManualRouteItem route) {
+    _pendingRunRoute = route;
+    _selectedRouteId = route.id;
+    notifyListeners();
+  }
+
+  /// Returns and clears any route queued for the Runs screen.
+  ManualRouteItem? takePendingRunRoute() {
+    final route = _pendingRunRoute;
+    _pendingRunRoute = null;
+    _selectedRouteId = null;
+    return route;
   }
 
   /// Attempts to restore a previous session from the persistent storage pool.

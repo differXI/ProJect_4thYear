@@ -89,7 +89,12 @@ class RouteResultCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onViewMap,
-                  icon: const Icon(Icons.map_outlined, size: 16),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, RunnaSpacing.listButtonHeight),
+                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  icon: const Icon(Icons.map_outlined, size: 14),
                   label: const Text('View map'),
                 ),
               ),
@@ -97,7 +102,12 @@ class RouteResultCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: onRun,
-                  icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, RunnaSpacing.listButtonHeight),
+                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 14),
                   label: const Text('Run'),
                 ),
               ),

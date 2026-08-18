@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 
+import '../../core/map_fit.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/route_preview_sheet.dart';
@@ -40,6 +41,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
   bool _isLoading = false;
   bool _isLocating = false;
   bool _showHazardPins = true;
+  bool _mapReady = false;
 
   static const _defaultCenter = LatLng(18.8059, 98.9523);
 
@@ -93,6 +95,24 @@ class _RoutesScreenState extends State<RoutesScreen> {
     } else if (mounted) {
       setState(() => _favoriteRoutes = const []);
     }
+  }
+
+  void _fitSelectedRouteOnMap() {
+    final route = _selectedRoute;
+    if (route == null || route.points.isEmpty || !_mapReady || !mounted) return;
+    RunnaMapFit.safeFitCamera(
+      _mapController,
+      RunnaMapFit.toLatLngs(route.points),
+      padding: RunnaMapFit.routesMapPadding,
+    );
+  }
+
+  void _selectRoute(ManualRouteItem route) {
+    setState(() {
+      _selectedRoute = route;
+      _drawnPoints = const [];
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
   }
 
   void _handleMapTap(TapPosition _, LatLng point) {
@@ -207,8 +227,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
   }
 
   void _startRunOnFavorite(ManualRouteItem route) {
-    // Set selected route and navigate to runs page
-    widget.controller.setSelectedRouteId(route.id);
+    widget.controller.setPendingRunRoute(route);
     widget.onNavigate?.call(2);
   }
 
@@ -445,8 +464,8 @@ class _RoutesScreenState extends State<RoutesScreen> {
             .map(
               (marker) => Marker(
                 point: LatLng(marker.lat, marker.lng),
-                width: 44,
-                height: 44,
+                width: 42,
+                height: 42,
                 child: GestureDetector(
                   onTap: () => _showHazardPinBottomSheet(marker),
                   child: Container(
@@ -512,6 +531,12 @@ class _RoutesScreenState extends State<RoutesScreen> {
                   initialCenter: center,
                   initialZoom: 14,
                   onTap: _handleMapTap,
+                  onMapReady: () {
+                    if (mounted) {
+                      setState(() => _mapReady = true);
+                      _fitSelectedRouteOnMap();
+                    }
+                  },
                 ),
                 children: [
                   TileLayer(
@@ -537,16 +562,16 @@ class _RoutesScreenState extends State<RoutesScreen> {
                       ..._drawnPoints.map(
                         (point) => Marker(
                           point: LatLng(point.lat, point.lng),
-                          width: 22,
-                          height: 22,
+                          width: 20,
+                          height: 20,
                           child: const _PinIcon(color: RunnaColors.primary, icon: Icons.circle),
                         ),
                       ),
                       if (_currentLocation != null)
                         Marker(
                           point: _currentLocation!,
-                          width: 28,
-                          height: 28,
+                          width: 26,
+                          height: 26,
                           child: const _PinIcon(color: RunnaColors.accent, icon: Icons.navigation),
                         ),
                     ],
@@ -752,10 +777,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
                       ),
                     ],
                   ),
-                  onTap: () => setState(() {
-                    _selectedRoute = route;
-                    _drawnPoints = const [];
-                  }),
+                  onTap: () => _selectRoute(route),
                 ),
               ),
             ),

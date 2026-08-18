@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 
+import '../core/map_fit.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
 
@@ -73,7 +74,13 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
       routePoints = const [];
     }
     final points = routePoints.map((point) => LatLng(point.lat, point.lng)).toList();
-    const fallbackCenter = LatLng(18.8059, 98.9523);
+    final mapCenter = points.isNotEmpty ? RunnaMapFit.centerOf(points) : RunnaMapFit.fallbackCenter;
+    final mapFit = RunnaMapFit.cameraFitFor(
+      points,
+      padding: RunnaMapFit.previewMapPadding,
+      maxZoom: 16,
+      minZoom: 12,
+    );
 
     final subtitleParts = <String>['By ${route.creatorFullName ?? 'Unknown'}'];
     if (route.creatorProvince != null && route.creatorProvince!.trim().isNotEmpty) {
@@ -133,11 +140,9 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                 height: 220,
                 child: FlutterMap(
                   options: MapOptions(
-                    initialCenter: points.isNotEmpty ? points.first : fallbackCenter,
+                    initialCenter: mapCenter,
                     initialZoom: 14,
-                    initialCameraFit: points.length > 1
-                        ? CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(36))
-                        : null,
+                    initialCameraFit: mapFit,
                   ),
                   children: [
                     TileLayer(
@@ -153,15 +158,15 @@ class _RoutePreviewSheetState extends State<RoutePreviewSheet> {
                         markers: [
                           Marker(
                             point: points.first,
-                            width: 20,
-                            height: 20,
+                            width: 18,
+                            height: 18,
                             child: const _PinDot(color: RunnaColors.primary),
                           ),
                           if (points.length > 1)
                             Marker(
                               point: points.last,
-                              width: 20,
-                              height: 20,
+                              width: 18,
+                              height: 18,
                               child: const _PinDot(color: RunnaColors.primaryDark),
                             ),
                         ],
