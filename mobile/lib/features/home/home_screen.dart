@@ -68,6 +68,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // FIX: notifyRunsChanged() broadcasts to every screen listening on the
+  // controller, including this one — so calling it plain caused this
+  // screen's own _onControllerChanged to treat its own action as an
+  // external change and reload, which visibly reset scroll position/state
+  // right after an action whose result this screen already applied itself.
+  // Pre-marking the version this call is about to produce as "already
+  // seen" skips that redundant self-reload while still letting every other
+  // screen react normally.
+  void _notifyRunsChangedWithoutSelfReload() {
+    _lastSeenRunsVersion = widget.controller.runsVersion + 1;
+    widget.controller.notifyRunsChanged();
+  }
+
   Future<void> _load() async {
     setState(() => _isLoadingStats = true);
     try {
@@ -149,6 +162,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       await widget.controller.favoriteManualRoute(routeId: route.id, favorite: !wasFavorited);
+      // FIX: Routes' own favorites list/count only fetches once at
+      // initState() (it stays mounted for the app's lifetime), so
+      // favoriting a route here never showed up there without this.
+      _notifyRunsChangedWithoutSelfReload();
     } catch (error) {
       if (!mounted) return;
       setState(() {

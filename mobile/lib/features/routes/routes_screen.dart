@@ -75,6 +75,19 @@ class _RoutesScreenState extends State<RoutesScreen> {
     }
   }
 
+  // FIX: notifyRunsChanged() broadcasts to every screen listening on the
+  // controller, including this one — so calling it plain caused this
+  // screen's own _onControllerChanged to treat its own action as an
+  // external change and reload, which visibly reset scroll position/state
+  // right after an action whose result this screen already applied itself.
+  // Pre-marking the version this call is about to produce as "already
+  // seen" skips that redundant self-reload while still letting every other
+  // screen react normally.
+  void _notifyRunsChangedWithoutSelfReload() {
+    _lastSeenRunsVersion = widget.controller.runsVersion + 1;
+    widget.controller.notifyRunsChanged();
+  }
+
   Future<void> _load() async {
     setState(() {
       _isLoading = true;
@@ -202,7 +215,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
       // FIX: RunsScreen's route picker only fetches manual routes once at
       // initState() (it stays mounted for the app's lifetime), so without
       // this it would never see a route saved after the app launched.
-      widget.controller.notifyRunsChanged();
+      _notifyRunsChangedWithoutSelfReload();
       await _load();
     } catch (error) {
       if (!mounted) return;
@@ -219,7 +232,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
       if (_selectedRoute?.id == route.id) {
         _selectedRoute = null;
       }
-      widget.controller.notifyRunsChanged();
+      _notifyRunsChangedWithoutSelfReload();
       await _load();
     } catch (error) {
       if (!mounted) return;
@@ -240,6 +253,10 @@ class _RoutesScreenState extends State<RoutesScreen> {
       setState(() {
         _favoriteRoutes = _favoriteRoutes.where((existing) => existing.id != route.id).toList();
       });
+      // FIX: Home's community-routes heart icons only fetch favorite state
+      // once at initState() (it stays mounted for the app's lifetime), so
+      // unfavoriting here never updated the heart there without this.
+      _notifyRunsChangedWithoutSelfReload();
     } catch (error) {
       if (!mounted) return;
       setState(() => _message = '$error');
@@ -308,7 +325,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
       // (it stays mounted for the app's lifetime), so without this a
       // share/unshare here would never be reflected there until some other
       // action (sort, search) happened to trigger a refetch.
-      widget.controller.notifyRunsChanged();
+      _notifyRunsChangedWithoutSelfReload();
     } catch (error) {
       if (!mounted) return;
       setState(() => _message = '$error');
