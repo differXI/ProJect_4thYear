@@ -199,6 +199,10 @@ class _RoutesScreenState extends State<RoutesScreen> {
       );
       _routeNameController.clear();
       setState(() => _drawnPoints = const []);
+      // FIX: RunsScreen's route picker only fetches manual routes once at
+      // initState() (it stays mounted for the app's lifetime), so without
+      // this it would never see a route saved after the app launched.
+      widget.controller.notifyRunsChanged();
       await _load();
     } catch (error) {
       if (!mounted) return;
@@ -215,6 +219,7 @@ class _RoutesScreenState extends State<RoutesScreen> {
       if (_selectedRoute?.id == route.id) {
         _selectedRoute = null;
       }
+      widget.controller.notifyRunsChanged();
       await _load();
     } catch (error) {
       if (!mounted) return;
@@ -299,6 +304,11 @@ class _RoutesScreenState extends State<RoutesScreen> {
             .toList();
         _message = sharedRoute.isShared ? 'Route shared to community.' : 'Route removed from community.';
       });
+      // FIX: Home's community-routes list only fetches once at initState()
+      // (it stays mounted for the app's lifetime), so without this a
+      // share/unshare here would never be reflected there until some other
+      // action (sort, search) happened to trigger a refetch.
+      widget.controller.notifyRunsChanged();
     } catch (error) {
       if (!mounted) return;
       setState(() => _message = '$error');
@@ -773,28 +783,37 @@ class _RoutesScreenState extends State<RoutesScreen> {
             (route) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: RunnaCard(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(route.name),
-                  subtitle: Text('${route.distanceKm.toStringAsFixed(2)} km • ${route.points.length} points'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          route.isShared ? Icons.check_circle : Icons.share_outlined,
-                          color: route.isShared ? RunnaColors.primary : null,
+                // FIX: ListTile paints its background/ink splashes on the
+                // nearest Material ancestor. RunnaCard is a plain decorated
+                // Container, not a Material, so without this the ListTile
+                // threw a debug-mode "background color or ink splashes may
+                // be invisible" warning on every repaint. Transparent so it
+                // doesn't change RunnaCard's own appearance.
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(route.name),
+                    subtitle: Text('${route.distanceKm.toStringAsFixed(2)} km • ${route.points.length} points'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            route.isShared ? Icons.check_circle : Icons.share_outlined,
+                            color: route.isShared ? RunnaColors.primary : null,
+                          ),
+                          tooltip: route.isShared ? 'Shared to community' : 'Share to community',
+                          onPressed: _isLoading ? null : () => _toggleShareRoute(route),
                         ),
-                        tooltip: route.isShared ? 'Shared to community' : 'Share to community',
-                        onPressed: _isLoading ? null : () => _toggleShareRoute(route),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: _isLoading ? null : () => _deleteRoute(route),
-                      ),
-                    ],
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: _isLoading ? null : () => _deleteRoute(route),
+                        ),
+                      ],
+                    ),
+                    onTap: () => _selectRoute(route),
                   ),
-                  onTap: () => _selectRoute(route),
                 ),
               ),
             ),

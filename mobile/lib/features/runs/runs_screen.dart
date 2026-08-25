@@ -97,6 +97,8 @@ class _RunsScreenState extends State<RunsScreen> {
   bool _isTracking = false;
   bool _isPinPlacementMode = false;
 
+  late int _lastSeenRunsVersion;
+
   int _secondsElapsed = 0;
   double _trackedDistanceKm = 0.0;
 
@@ -166,6 +168,33 @@ class _RunsScreenState extends State<RunsScreen> {
     return meters >= 2;
   }
 
+  // FIX: reject GPS fixes that can't be real. (0, 0) "Null Island" is a
+  // well-known sentinel several platforms/emulators return when they never
+  // actually got a fix, and an implausible speed between two consecutive
+  // readings means one of them is a bad fix (e.g. jumping to/from Null
+  // Island) rather than real movement. Left unfiltered, this both breaks
+  // the off-route distance display (showing millions of meters) and can
+  // silently corrupt the tracked distance once a real fix follows a bad one.
+  bool _isPlausiblePosition(Position position) {
+    if (position.latitude == 0 && position.longitude == 0) return false;
+
+    final last = _currentPosition;
+    if (last == null) return true;
+
+    final meters = _distance(
+      LatLng(last.latitude, last.longitude),
+      LatLng(position.latitude, position.longitude),
+    );
+    final secondsSinceLast =
+        position.timestamp.difference(last.timestamp).inSeconds.abs();
+    if (secondsSinceLast <= 0) return true;
+
+    final impliedSpeedKmh = (meters / 1000) / (secondsSinceLast / 3600);
+    // No runner moves this fast — treat it as a bad fix rather than real,
+    // trackable movement. Generous enough to tolerate GPS jitter.
+    return impliedSpeedKmh < 300;
+  }
+
   double _calculateDistanceKm(List<RoutePoint> points) {
     var meters = 0.0;
     for (var i = 1; i < points.length; i++) {
@@ -205,6 +234,7 @@ class _RunsScreenState extends State<RunsScreen> {
     // never be picked up after the very first app launch, since _loadRuns()
     // (which used to catch it via initState on every tab switch) no longer
     // re-fires.
+    _lastSeenRunsVersion = widget.controller.runsVersion;
     widget.controller.addListener(_onControllerChanged);
     _loadRuns();
     _loadHazardMarkers();
@@ -240,15 +270,27 @@ class _RunsScreenState extends State<RunsScreen> {
 
   void _onControllerChanged() {
     if (!mounted) return;
+
     final pendingRoute = widget.controller.takePendingRunRoute();
-    if (pendingRoute == null || _activeRun != null) return;
-    setState(() {
-      _selectedRoute = pendingRoute;
-      if (!_manualRoutes.any((r) => r.id == pendingRoute.id)) {
-        _manualRoutes = [pendingRoute, ..._manualRoutes];
-      }
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
+    if (pendingRoute != null && _activeRun == null) {
+      // FIX: only update the *selection*, never merge this into
+      // _manualRoutes — that list feeds the route picker and must stay a
+      // pure "routes I own" list (see _openRoutePickerSheet). Merging used
+      // to be needed so the old native dropdown's selected value existed in
+      // its own items list; the custom picker has no such requirement.
+      setState(() => _selectedRoute = pendingRoute);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
+    }
+
+    // FIX: the route picker's list is otherwise only fetched once at
+    // initState() (this screen stays mounted for the app's lifetime), so a
+    // route saved or deleted on the Routes tab would never show up here
+    // without this — reuse _loadRuns() since it already knows how to merge
+    // a fresh route list without losing the current selection or active run.
+    if (widget.controller.runsVersion != _lastSeenRunsVersion) {
+      _lastSeenRunsVersion = widget.controller.runsVersion;
+      _loadRuns();
+    }
   }
 
   // ── data loading ─────────────────────────
@@ -287,14 +329,15 @@ class _RunsScreenState extends State<RunsScreen> {
           .firstWhere((r) => r?.status == 'active', orElse: () => null);
 
       final pendingRoute = widget.controller.takePendingRunRoute();
-      var routesList = List<ManualRouteItem>.from(manualRoutes);
+      // FIX: routesList (-> _manualRoutes, which feeds the route picker)
+      // must stay a pure "routes I own" list — never merge pendingRoute
+      // (someone else's community route, queued by the "Run" button) into
+      // it. Only the *selection* below should reflect it.
+      final routesList = List<ManualRouteItem>.from(manualRoutes);
 
       ManualRouteItem? selectedRoute;
       if (pendingRoute != null) {
         selectedRoute = pendingRoute;
-        if (!routesList.any((r) => r.id == pendingRoute.id)) {
-          routesList.insert(0, pendingRoute);
-        }
       } else {
         final selectedRouteId = widget.controller.selectedRouteId;
         if (selectedRouteId != null) {
@@ -305,9 +348,19 @@ class _RunsScreenState extends State<RunsScreen> {
         }
       }
 
+      final currentUserId = widget.controller.currentUser?.id;
       final currentSelection = _selectedRoute;
+      // FIX: a community route (not owned by the signed-in user) never
+      // appears in routesList by design, so checking membership there would
+      // wrongly treat it as "no longer valid" and reset the selection back
+      // to the user's own default — e.g. whenever an unrelated route gets
+      // saved/deleted elsewhere and bumps runsVersion. Trust it unless it's
+      // supposed to be one of the user's own routes and has disappeared
+      // from that list (e.g. deleted).
       final currentSelectionStillValid = currentSelection != null &&
-          routesList.any((r) => r.id == currentSelection.id);
+          (currentUserId == null ||
+              currentSelection.userId != currentUserId ||
+              routesList.any((r) => r.id == currentSelection.id));
 
       setState(() {
         _runs = runs;
@@ -332,9 +385,14 @@ class _RunsScreenState extends State<RunsScreen> {
         }
       });
 
-      if (pendingRoute != null && pendingRoute.points.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
-      } else if (selectedRoute != null && selectedRoute.points.isNotEmpty) {
+      // FIX: fit the map to whichever route actually ended up selected —
+      // not just when it came from a pendingRoute/selectedRouteId hand-off.
+      // Previously, a route picked by default (e.g. the first route on a
+      // fresh app load with no active run) never moved the camera, leaving
+      // the map sitting on its default center with the route's polyline
+      // drawn off-screen, looking like the route never loaded at all.
+      final routeToFit = _selectedRoute;
+      if (routeToFit != null && routeToFit.points.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
       }
 
@@ -439,6 +497,7 @@ class _RunsScreenState extends State<RunsScreen> {
 
   Future<void> _handlePosition(Position position) async {
     if (!mounted) return;
+    if (!_isPlausiblePosition(position)) return;
 
     final activeRun = _activeRun;
     final point = RoutePoint(lat: position.latitude, lng: position.longitude);
@@ -496,6 +555,15 @@ class _RunsScreenState extends State<RunsScreen> {
     try {
       final position = await _locationService.getCurrentPosition();
       if (!mounted) return;
+      // FIX: this one-shot lookup bypassed the same GPS-plausibility check
+      // as the tracking stream, so a bad fix (e.g. (0, 0) "Null Island")
+      // could still get set as _currentPosition and show a nonsensical
+      // "off route by X m" figure.
+      if (position.latitude == 0 && position.longitude == 0) {
+        setState(() => _message =
+            'Could not get an accurate location. Please try again outdoors.');
+        return;
+      }
       setState(() => _currentPosition = position);
       _safeMapMove(LatLng(position.latitude, position.longitude), 16);
     } catch (error) {
@@ -618,6 +686,56 @@ class _RunsScreenState extends State<RunsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openRoutePickerSheet() async {
+    // FIX: fetch straight into a local variable rather than writing the
+    // result into the shared _manualRoutes field. _manualRoutes can also be
+    // mutated concurrently by _onControllerChanged (which merges in a route
+    // from the "Run" button on someone else's community route, to preselect
+    // that run) — writing this fetch's result there raced against that
+    // merge, so a stale/foreign route could still slip back in right before
+    // the sheet reads it. Keeping this fetch fully local sidesteps that
+    // entirely: nothing else can touch it.
+    List<ManualRouteItem> routes;
+    try {
+      routes = await widget.controller.getManualRoutes();
+    } catch (_) {
+      // Fetch failed — fall back to whatever was already loaded rather than
+      // showing an empty picker.
+      routes = _manualRoutes;
+    }
+    if (!mounted) return;
+
+    // FIX: only offer routes the signed-in user actually owns/saved — never
+    // a route merged in from the "Run" button on a community route (see
+    // _onControllerChanged), which is meant to preselect that run, not
+    // become a permanent, pick-able entry in this list.
+    final currentUserId = widget.controller.currentUser?.id;
+    final ownRoutes = currentUserId == null
+        ? routes
+        : routes.where((r) => r.userId == currentUserId).toList();
+
+    final picked = await showModalBottomSheet<ManualRouteItem>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => _RoutePickerSheet(
+          routes: ownRoutes,
+          scrollController: scrollController,
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _selectedRoute = picked);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
   }
 
   Color _hazardColorForSeverity(int severity) {
@@ -1165,28 +1283,28 @@ class _RunsScreenState extends State<RunsScreen> {
                   ? 'No active run'
                   : 'Active run #${_activeRun!.id}'),
               const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: route?.id,
-                decoration:
-                    const InputDecoration(labelText: 'Manual route'),
-                items: _manualRoutes
-                    .map((r) => DropdownMenuItem<int>(
-                          value: r.id,
-                          child: Text(
-                              '${r.name} (${r.distanceKm.toStringAsFixed(2)} km)'),
-                        ))
-                    .toList(),
-                onChanged: _activeRun != null
-                    ? null
-                    : (routeId) {
-                        setState(() {
-                          _selectedRoute = _manualRoutes
-                              .firstWhere((r) => r.id == routeId);
-                        });
-                        WidgetsBinding.instance.addPostFrameCallback(
-                          (_) => _fitSelectedRouteOnMap(),
-                        );
-                      },
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _activeRun != null ? null : _openRoutePickerSheet,
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Manual route'),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          route != null
+                              ? '${route.name} (${route.distanceKm.toStringAsFixed(2)} km)'
+                              : 'Select a route',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Icon(Icons.arrow_drop_down,
+                          color: _activeRun != null
+                              ? RunnaColors.muted.withValues(alpha: 0.4)
+                              : RunnaColors.muted),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               LinearProgressIndicator(value: _progress),
@@ -1530,6 +1648,100 @@ class _HazardReportSheetState extends State<_HazardReportSheet> {
                     )
                   : const Text('Report hazard'),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutePickerSheet extends StatefulWidget {
+  const _RoutePickerSheet({required this.routes, required this.scrollController});
+
+  final List<ManualRouteItem> routes;
+  final ScrollController scrollController;
+
+  @override
+  State<_RoutePickerSheet> createState() => _RoutePickerSheetState();
+}
+
+class _RoutePickerSheetState extends State<_RoutePickerSheet> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _query.isEmpty
+        ? widget.routes
+        : widget.routes
+            .where((r) => r.name.toLowerCase().contains(_query.toLowerCase()))
+            .toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          RunnaSpacing.page, RunnaSpacing.page, RunnaSpacing.page, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          Text('Select a route',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _query = value),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Search routes',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => setState(() {
+                        _searchController.clear();
+                        _query = '';
+                      }),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: widget.routes.isEmpty
+                ? const Center(child: Text('No manual routes yet.'))
+                : filtered.isEmpty
+                    ? const Center(child: Text('No routes match your search.'))
+                    : ListView.builder(
+                        controller: widget.scrollController,
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final r = filtered[index];
+                          return ListTile(
+                            title: Text(r.name),
+                            subtitle: Text('${r.distanceKm.toStringAsFixed(2)} km'),
+                            onTap: () => Navigator.of(context).pop(r),
+                          );
+                        },
+                      ),
           ),
         ],
       ),

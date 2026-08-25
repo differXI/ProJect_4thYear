@@ -23,36 +23,10 @@ import 'package:runna_mobile/features/home/home_screen.dart';
 import 'package:runna_mobile/features/routes/routes_screen.dart';
 import 'package:runna_mobile/features/runs/runs_screen.dart';
 
-/// The Routes tab has a PRE-EXISTING, unrelated bug (a `ListTile` nested
-/// directly inside `RunnaCard`'s decorated `Container`, with no `Material`
-/// ancestor) that throws this exact FlutterError in debug mode whenever it
-/// renders a saved route — it fires repeatedly across repaint passes. It
-/// predates and is untouched by the runs-tracking fix this test guards, so
-/// it's filtered out at the source here instead of failing the test — any
-/// *other* error still reaches the default handler and fails loudly.
-bool _isKnownRoutesScreenWarning(FlutterErrorDetails details) {
-  return details.exception.toString().contains(
-      'ListTile background color or ink splashes');
-}
-
-/// The test binding installs its own `FlutterError.onError` (which feeds
-/// `takeException()`) fresh per test, after `setUp()` runs — so the filter
-/// must be installed from inside the test body, not a top-level `setUp`.
-void _ignoreKnownRoutesScreenWarning() {
-  final original = FlutterError.onError;
-  FlutterError.onError = (FlutterErrorDetails details) {
-    if (_isKnownRoutesScreenWarning(details)) return;
-    original?.call(details);
-  };
-  addTearDown(() => FlutterError.onError = original);
-}
-
 void main() {
   testWidgets(
     'all tabs mount together under IndexedStack without throwing',
     (tester) async {
-      _ignoreKnownRoutesScreenWarning();
-
       // The default 800x600 test surface is shorter than RunsScreen's
       // content (map + controls), which pushes "Start run" below the fold
       // and makes tester.tap() unable to hit-test it. Keep the default
@@ -77,8 +51,6 @@ void main() {
   testWidgets(
     'starting a run survives switching to every other tab and back',
     (tester) async {
-      _ignoreKnownRoutesScreenWarning();
-
       await tester.binding.setSurfaceSize(const Size(800, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -150,7 +122,6 @@ void main() {
       // which is how this used to work. Now that RunsScreen stays mounted
       // for the app's lifetime, it must instead react to the controller's
       // notifyListeners() call directly.
-      _ignoreKnownRoutesScreenWarning();
       await tester.binding.setSurfaceSize(const Size(800, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -208,7 +179,6 @@ void main() {
       // Geolocator, whose stream subscription never resolves cancel() in a
       // headless test (no platform plugin registered) — a test-environment
       // limitation, not a production bug, that this sidesteps entirely.
-      _ignoreKnownRoutesScreenWarning();
       await tester.binding.setSurfaceSize(const Size(800, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -269,7 +239,6 @@ void main() {
       // never repeats on its own, so a run count would stay stale forever
       // after finishing a run on a different tab. notifyRunsChanged() plus a
       // controller listener on each screen should trigger a fresh fetch.
-      _ignoreKnownRoutesScreenWarning();
       await tester.binding.setSurfaceSize(const Size(800, 2400));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -298,6 +267,114 @@ void main() {
       // ever visited during this test.
       expect(controller.communityRoutesFetchCount, greaterThan(communityFetchesAfterMount));
       expect(controller.manualRoutesFetchCount, greaterThan(manualRoutesFetchesAfterMount));
+    },
+  );
+
+  testWidgets(
+    'a route saved on the Routes tab shows up in the already-mounted '
+    "Runs tab's route picker",
+    (tester) async {
+      // Regression test: RunsScreen's route picker list is otherwise only
+      // fetched once at initState() (it stays mounted for the app's
+      // lifetime), so a route saved on the Routes tab after that would
+      // never appear there without RoutesScreen calling notifyRunsChanged()
+      // and RunsScreen reacting to it.
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = _FakeAuthController();
+      await tester.pumpWidget(_TabbedTestHarness(controller: controller));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final runsScreenFinder = find.byType(RunsScreen);
+
+      // Simulate saving a brand new route on the Routes tab.
+      controller.addManualRouteAsIfSavedElsewhere(const ManualRouteItem(
+        id: 2,
+        userId: 1,
+        name: 'Freshly Saved Loop',
+        pathJson: '[{"lat":18.82,"lng":98.94},{"lat":18.83,"lng":98.93}]',
+        distanceKm: 2.6,
+        isShared: false,
+        runCount: 0,
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Open the route picker sheet and confirm the new route is listed.
+      final routePickerLabelFinder = find.descendant(
+        of: runsScreenFinder,
+        matching: find.text('Manual route'),
+      );
+      final routePickerFinder = find.ancestor(
+        of: routePickerLabelFinder,
+        matching: find.byType(InkWell),
+      );
+      await tester.ensureVisible(routePickerFinder);
+      await tester.tap(routePickerFinder);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      expect(find.text('Freshly Saved Loop'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    "the route picker excludes routes merged in from another user's "
+    '"Run" button that are not actually owned by the signed-in user',
+    (tester) async {
+      // Regression test: tapping "Run" on a community route (owned by
+      // someone else) merges it into RunsScreen's _manualRoutes so it can be
+      // preselected for that run — but that merge must not leak into the
+      // route picker's selectable list, or routes the user never saved
+      // themselves would show up there permanently.
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = _FakeAuthController();
+      await tester.pumpWidget(_TabbedTestHarness(controller: controller));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Simulate tapping "Run" on someone else's community route.
+      const othersRoute = ManualRouteItem(
+        id: 77,
+        userId: 999, // not the signed-in user (id 1)
+        name: "Someone Else's Route",
+        pathJson: '[{"lat":18.79,"lng":98.97},{"lat":18.80,"lng":98.98}]',
+        distanceKm: 4.0,
+        isShared: true,
+        runCount: 5,
+      );
+      controller.setPendingRunRoute(othersRoute);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final runsScreenFinder = find.byType(RunsScreen);
+      // It's preselected — shown as the current selection.
+      expect(
+        find.descendant(of: runsScreenFinder, matching: find.textContaining("Someone Else's Route")),
+        findsWidgets,
+      );
+
+      // But opening the picker to choose a *different* route must not offer
+      // it as a pick-able entry alongside the user's own saved routes.
+      final routePickerLabelFinder = find.descendant(
+        of: runsScreenFinder,
+        matching: find.text('Manual route'),
+      );
+      final routePickerFinder = find.ancestor(
+        of: routePickerLabelFinder,
+        matching: find.byType(InkWell),
+      );
+      await tester.ensureVisible(routePickerFinder);
+      await tester.tap(routePickerFinder);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      expect(find.text("Someone Else's Route"), findsNothing);
+      expect(find.text('Test Loop'), findsOneWidget);
     },
   );
 }
@@ -372,11 +449,31 @@ class _FakeAuthController extends AuthController {
     runCount: 0,
   );
 
+  late final List<ManualRouteItem> _manualRoutes = [_route];
   final List<RunItem> _runs = [];
   int _nextRunId = 1;
 
+  @override
+  UserProfile? get currentUser => const UserProfile(
+        id: 1,
+        firstName: 'Test',
+        lastName: 'Runner',
+        username: 'testrunner',
+        email: 'test@example.com',
+        isActive: true,
+        roleId: 1,
+        roleName: 'member',
+      );
+
   int communityRoutesFetchCount = 0;
   int manualRoutesFetchCount = 0;
+
+  /// Simulates RoutesScreen._saveRoute() creating a new route: appends it
+  /// and bumps notifyRunsChanged(), exactly like the real save flow does.
+  void addManualRouteAsIfSavedElsewhere(ManualRouteItem route) {
+    _manualRoutes.add(route);
+    notifyRunsChanged();
+  }
 
   @override
   bool get isAuthenticated => true;
@@ -390,7 +487,7 @@ class _FakeAuthController extends AuthController {
   @override
   Future<List<ManualRouteItem>> getManualRoutes() async {
     manualRoutesFetchCount++;
-    return [_route];
+    return List.unmodifiable(_manualRoutes);
   }
 
   @override

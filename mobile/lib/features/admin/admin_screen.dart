@@ -257,35 +257,42 @@ class _AdminScreenState extends State<AdminScreen> {
               (user) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: RunnaCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text('${user.firstName} ${user.lastName} (@${user.username})'),
-                        subtitle: Text(
-                          '${user.email} • ${user.runCount} runs • ${user.pinCount} pins',
-                        ),
-                        trailing: Switch(
-                          value: user.isActive,
-                          onChanged: _isActing ? null : (_) => _toggleUser(user),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          const Text('Role:'),
-                          const SizedBox(width: 8),
-                          DropdownButton<String>(
-                            value: user.roleName == 'admin' ? 'admin' : 'member',
-                            items: const [
-                              DropdownMenuItem(value: 'member', child: Text('member')),
-                              DropdownMenuItem(value: 'admin', child: Text('admin')),
-                            ],
-                            onChanged: _isActing ? null : (value) => value == null ? null : _changeRole(user, value),
+                  // FIX: ListTile needs a Material ancestor to paint its
+                  // background/ink splashes; RunnaCard is a plain decorated
+                  // Container, not a Material. Transparent so it doesn't
+                  // change RunnaCard's own appearance.
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('${user.firstName} ${user.lastName} (@${user.username})'),
+                          subtitle: Text(
+                            '${user.email} • ${user.runCount} runs • ${user.pinCount} pins',
                           ),
-                        ],
-                      ),
-                    ],
+                          trailing: Switch(
+                            value: user.isActive,
+                            onChanged: _isActing ? null : (_) => _toggleUser(user),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            const Text('Role:'),
+                            const SizedBox(width: 8),
+                            DropdownButton<String>(
+                              value: user.roleName == 'admin' ? 'admin' : 'member',
+                              items: const [
+                                DropdownMenuItem(value: 'member', child: Text('member')),
+                                DropdownMenuItem(value: 'admin', child: Text('admin')),
+                              ],
+                              onChanged: _isActing ? null : (value) => value == null ? null : _changeRole(user, value),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -308,16 +315,19 @@ class _AdminScreenState extends State<AdminScreen> {
               (marker) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: RunnaCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(marker.categoryLabel),
-                    subtitle: Text(
-                      'Severity ${marker.severity} • ${marker.status}'
-                      '${marker.note != null ? ' • ${marker.note}' : ''}',
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: RunnaColors.danger),
-                      onPressed: _isActing ? null : () => _removeMarker(marker),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(marker.categoryLabel),
+                      subtitle: Text(
+                        'Severity ${marker.severity} • ${marker.status}'
+                        '${marker.note != null ? ' • ${marker.note}' : ''}',
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: RunnaColors.danger),
+                        onPressed: _isActing ? null : () => _removeMarker(marker),
+                      ),
                     ),
                   ),
                 ),
@@ -344,33 +354,36 @@ class _AdminScreenState extends State<AdminScreen> {
               (route) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: RunnaCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(route.name),
-                        subtitle: Text(
-                          '${route.distanceKm.toStringAsFixed(2)} km • '
-                          '${route.creatorFullName ?? 'Unknown creator'}',
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(route.name),
+                          subtitle: Text(
+                            '${route.distanceKm.toStringAsFixed(2)} km • '
+                            '${route.creatorFullName ?? 'Unknown creator'}',
+                          ),
                         ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.lock_outline),
-                            label: const Text('Unpublish'),
-                            onPressed: _isActing ? null : () => _unpublishRoute(route),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton.tonal(
-                            onPressed: _isActing ? null : () => _deleteRoute(route),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    ],
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.lock_outline),
+                              label: const Text('Unpublish'),
+                              onPressed: _isActing ? null : () => _unpublishRoute(route),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.tonal(
+                              onPressed: _isActing ? null : () => _deleteRoute(route),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
