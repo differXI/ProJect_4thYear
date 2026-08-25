@@ -28,10 +28,33 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _isLoading = false;
   bool _isActing = false;
 
+  late int _lastSeenRunsVersion;
+
   @override
   void initState() {
     super.initState();
+    _lastSeenRunsVersion = widget.controller.runsVersion;
+    widget.controller.addListener(_onControllerChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    // FIX: this screen stays mounted for the app's lifetime (see the
+    // IndexedStack fix in main.dart), so initState()'s one-time load can't
+    // pick up routes shared/unshared/created/deleted elsewhere on its own —
+    // refresh the moderation list whenever notifyRunsChanged() bumps the
+    // version, same as Home's community routes.
+    if (widget.controller.runsVersion != _lastSeenRunsVersion) {
+      _lastSeenRunsVersion = widget.controller.runsVersion;
+      _loadRoutes();
+    }
   }
 
   Future<void> _load() async {
@@ -143,6 +166,11 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       await widget.controller.unpublishAdminRoute(route.id);
       setState(() => _actionMessage = 'Route unpublished successfully');
+      // FIX: this only refreshed Admin's own list — Home's community
+      // routes and the route owner's own Saved routes list (if the same
+      // session) never got told to refresh, so they kept showing the route
+      // as still published/still present.
+      widget.controller.notifyRunsChanged();
       await _loadRoutes();
     } catch (error) {
       if (!mounted) return;
@@ -180,6 +208,11 @@ class _AdminScreenState extends State<AdminScreen> {
     try {
       await widget.controller.deleteAdminRoute(route.id);
       setState(() => _actionMessage = 'Route deleted successfully');
+      // FIX: same as unpublish — without this, the route's owner (if the
+      // same session) still sees it in their own Saved routes list, and
+      // Home's community list still shows it, even though it's gone from
+      // the database.
+      widget.controller.notifyRunsChanged();
       await _loadRoutes();
     } catch (error) {
       if (!mounted) return;
@@ -250,49 +283,51 @@ class _AdminScreenState extends State<AdminScreen> {
           const SizedBox(height: 12),
           if (_usersError != null)
             _ErrorCard(message: 'Users failed to load: $_usersError', onRetry: _loadUsers)
-          else if (_users.isEmpty)
-            const RunnaCard(child: Text('No users found.'))
           else
-            ..._users.map(
-              (user) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: RunnaCard(
-                  // FIX: ListTile needs a Material ancestor to paint its
-                  // background/ink splashes; RunnaCard is a plain decorated
-                  // Container, not a Material. Transparent so it doesn't
-                  // change RunnaCard's own appearance.
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('${user.firstName} ${user.lastName} (@${user.username})'),
-                          subtitle: Text(
-                            '${user.email} • ${user.runCount} runs • ${user.pinCount} pins',
-                          ),
-                          trailing: Switch(
-                            value: user.isActive,
-                            onChanged: _isActing ? null : (_) => _toggleUser(user),
-                          ),
+            _PaginatedSearchSection<AdminUserItem>(
+              items: _users,
+              searchHint: 'Search users',
+              emptyLabel: _users.isEmpty ? 'No users found.' : 'No users match your search.',
+              searchMatcher: (user, query) =>
+                  '${user.firstName} ${user.lastName} ${user.username} ${user.email}'
+                      .toLowerCase()
+                      .contains(query),
+              itemBuilder: (context, user) => RunnaCard(
+                // FIX: ListTile needs a Material ancestor to paint its
+                // background/ink splashes; RunnaCard is a plain decorated
+                // Container, not a Material. Transparent so it doesn't
+                // change RunnaCard's own appearance.
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('${user.firstName} ${user.lastName} (@${user.username})'),
+                        subtitle: Text(
+                          '${user.email} • ${user.runCount} runs • ${user.pinCount} pins',
                         ),
-                        Row(
-                          children: [
-                            const Text('Role:'),
-                            const SizedBox(width: 8),
-                            DropdownButton<String>(
-                              value: user.roleName == 'admin' ? 'admin' : 'member',
-                              items: const [
-                                DropdownMenuItem(value: 'member', child: Text('member')),
-                                DropdownMenuItem(value: 'admin', child: Text('admin')),
-                              ],
-                              onChanged: _isActing ? null : (value) => value == null ? null : _changeRole(user, value),
-                            ),
-                          ],
+                        trailing: Switch(
+                          value: user.isActive,
+                          onChanged: _isActing ? null : (_) => _toggleUser(user),
                         ),
-                      ],
-                    ),
+                      ),
+                      Row(
+                        children: [
+                          const Text('Role:'),
+                          const SizedBox(width: 8),
+                          DropdownButton<String>(
+                            value: user.roleName == 'admin' ? 'admin' : 'member',
+                            items: const [
+                              DropdownMenuItem(value: 'member', child: Text('member')),
+                              DropdownMenuItem(value: 'admin', child: Text('admin')),
+                            ],
+                            onChanged: _isActing ? null : (value) => value == null ? null : _changeRole(user, value),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -308,26 +343,28 @@ class _AdminScreenState extends State<AdminScreen> {
           const SizedBox(height: 12),
           if (_markersError != null)
             _ErrorCard(message: 'Hazard pins failed to load: $_markersError', onRetry: _loadMarkers)
-          else if (_markers.isEmpty)
-            const RunnaCard(child: Text('No active pins to moderate.'))
           else
-            ..._markers.map(
-              (marker) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: RunnaCard(
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(marker.categoryLabel),
-                      subtitle: Text(
-                        'Severity ${marker.severity} • ${marker.status}'
-                        '${marker.note != null ? ' • ${marker.note}' : ''}',
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: RunnaColors.danger),
-                        onPressed: _isActing ? null : () => _removeMarker(marker),
-                      ),
+            _PaginatedSearchSection<HazardMarkerItem>(
+              items: _markers,
+              searchHint: 'Search hazard pins',
+              emptyLabel: _markers.isEmpty ? 'No active pins to moderate.' : 'No pins match your search.',
+              searchMatcher: (marker, query) =>
+                  '${marker.categoryLabel} ${marker.status} ${marker.note ?? ''}'
+                      .toLowerCase()
+                      .contains(query),
+              itemBuilder: (context, marker) => RunnaCard(
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(marker.categoryLabel),
+                    subtitle: Text(
+                      'Severity ${marker.severity} • ${marker.status}'
+                      '${marker.note != null ? ' • ${marker.note}' : ''}',
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: RunnaColors.danger),
+                      onPressed: _isActing ? null : () => _removeMarker(marker),
                     ),
                   ),
                 ),
@@ -347,48 +384,204 @@ class _AdminScreenState extends State<AdminScreen> {
           const SizedBox(height: 12),
           if (_routesError != null)
             _ErrorCard(message: 'Routes failed to load: $_routesError', onRetry: _loadRoutes)
-          else if (_routes.isEmpty)
-            const RunnaCard(child: Text('No community routes to manage.'))
           else
-            ..._routes.map(
-              (route) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: RunnaCard(
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(route.name),
-                          subtitle: Text(
-                            '${route.distanceKm.toStringAsFixed(2)} km • '
-                            '${route.creatorFullName ?? 'Unknown creator'}',
+            _PaginatedSearchSection<ManualRouteItem>(
+              items: _routes,
+              searchHint: 'Search community routes',
+              emptyLabel: _routes.isEmpty ? 'No community routes to manage.' : 'No routes match your search.',
+              searchMatcher: (route, query) =>
+                  '${route.name} ${route.creatorFullName ?? ''}'.toLowerCase().contains(query),
+              itemBuilder: (context, route) => RunnaCard(
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(route.name),
+                        subtitle: Text(
+                          '${route.distanceKm.toStringAsFixed(2)} km • '
+                          '${route.creatorFullName ?? 'Unknown creator'}',
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.lock_outline),
+                            label: const Text('Unpublish'),
+                            onPressed: _isActing ? null : () => _unpublishRoute(route),
                           ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.lock_outline),
-                              label: const Text('Unpublish'),
-                              onPressed: _isActing ? null : () => _unpublishRoute(route),
-                            ),
-                            const SizedBox(width: 8),
-                            FilledButton.tonal(
-                              onPressed: _isActing ? null : () => _deleteRoute(route),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 8),
+                          FilledButton.tonal(
+                            onPressed: _isActing ? null : () => _deleteRoute(route),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Search box + fixed-size list + page-number navigation, shared by the
+/// admin screen's Users, Hazard pins, and Community routes sections so none
+/// of them render unbounded, hard-to-scan lists.
+class _PaginatedSearchSection<T> extends StatefulWidget {
+  const _PaginatedSearchSection({
+    super.key,
+    required this.items,
+    required this.searchMatcher,
+    required this.itemBuilder,
+    required this.emptyLabel,
+    required this.searchHint,
+    this.pageSize = 10,
+  });
+
+  final List<T> items;
+  final bool Function(T item, String lowercaseQuery) searchMatcher;
+  final Widget Function(BuildContext context, T item) itemBuilder;
+  final String emptyLabel;
+  final String searchHint;
+  final int pageSize;
+
+  @override
+  State<_PaginatedSearchSection<T>> createState() => _PaginatedSearchSectionState<T>();
+}
+
+class _PaginatedSearchSectionState<T> extends State<_PaginatedSearchSection<T>> {
+  final _searchController = TextEditingController();
+  String _query = '';
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _query.isEmpty
+        ? widget.items
+        : widget.items.where((item) => widget.searchMatcher(item, _query)).toList();
+
+    final totalPages = filtered.isEmpty ? 1 : (filtered.length / widget.pageSize).ceil();
+    // FIX: clamp instead of trusting _page — the underlying list can shrink
+    // out from under a page the admin is currently viewing (delete, search).
+    final page = _page.clamp(0, totalPages - 1);
+    final start = page * widget.pageSize;
+    final end = (start + widget.pageSize).clamp(0, filtered.length);
+    final pageItems = filtered.isEmpty ? <T>[] : filtered.sublist(start, end);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.items.isNotEmpty) ...[
+          TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() {
+              _query = value.trim().toLowerCase();
+              _page = 0;
+            }),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: widget.searchHint,
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => setState(() {
+                        _searchController.clear();
+                        _query = '';
+                        _page = 0;
+                      }),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (filtered.isEmpty)
+          RunnaCard(child: Text(widget.emptyLabel))
+        else ...[
+          for (final item in pageItems)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: widget.itemBuilder(context, item),
+            ),
+          if (totalPages > 1)
+            Center(
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: page > 0 ? () => setState(() => _page = page - 1) : null,
+                  ),
+                  for (var i = 0; i < totalPages; i++)
+                    _PageNumberButton(
+                      pageNumber: i + 1,
+                      isSelected: i == page,
+                      onTap: () => setState(() => _page = i),
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: page < totalPages - 1 ? () => setState(() => _page = page + 1) : null,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PageNumberButton extends StatelessWidget {
+  const _PageNumberButton({
+    required this.pageNumber,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final int pageNumber;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isSelected ? RunnaColors.primary : Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: isSelected ? null : onTap,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Center(
+            child: Text(
+              '$pageNumber',
+              style: TextStyle(
+                color: isSelected ? Colors.white : RunnaColors.primaryDark,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

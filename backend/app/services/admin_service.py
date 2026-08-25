@@ -172,9 +172,20 @@ class AdminService:
 
     def list_routes(self, shared_only: bool = False) -> list[ManualRoute]:
         """Lists community manual routes for moderation, newest first."""
-        statement = select(ManualRoute).order_by(ManualRoute.created_at.desc())
         if shared_only:
-            statement = statement.where(ManualRoute.is_shared.is_(True))
+            # FIX: match list_shared_manual_routes' "newest" ordering (used
+            # by Home's Community Routes) so the admin moderation list shows
+            # routes in the same order as what's actually visible there —
+            # sorting by created_at alone put routes in a different order
+            # than Home, making the two lists look mismatched even when they
+            # contained the exact same shared routes.
+            statement = (
+                select(ManualRoute)
+                .where(ManualRoute.is_shared.is_(True))
+                .order_by(ManualRoute.shared_at.desc(), ManualRoute.created_at.desc())
+            )
+        else:
+            statement = select(ManualRoute).order_by(ManualRoute.created_at.desc())
         return list(self.db.scalars(statement).all())
 
     def unpublish_route(self, route_id: int) -> ManualRoute:

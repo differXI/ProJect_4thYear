@@ -467,8 +467,11 @@ class RunnaApi {
   }
 
   Future<List<ManualRouteItem>> getAdminRoutes(String accessToken) async {
+    // FIX: without shared_only=true this defaulted to every manual route in
+    // the system (private ones included), not just the community/shared
+    // routes the "Manage community routes" admin section is meant to show.
     final response = await _client.get(
-      _uri('/admin/routes'),
+      _uri('/admin/routes?shared_only=true'),
       headers: _jsonHeaders(accessToken),
     );
     _ensureSuccess(response);
