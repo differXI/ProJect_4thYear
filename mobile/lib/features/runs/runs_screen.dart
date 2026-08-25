@@ -98,6 +98,7 @@ class _RunsScreenState extends State<RunsScreen> {
   bool _isPinPlacementMode = false;
 
   late int _lastSeenRunsVersion;
+  late bool _lastSeenAuthState;
 
   int _secondsElapsed = 0;
   double _trackedDistanceKm = 0.0;
@@ -235,6 +236,7 @@ class _RunsScreenState extends State<RunsScreen> {
     // (which used to catch it via initState on every tab switch) no longer
     // re-fires.
     _lastSeenRunsVersion = widget.controller.runsVersion;
+    _lastSeenAuthState = widget.controller.isAuthenticated;
     widget.controller.addListener(_onControllerChanged);
     _loadRuns();
     _loadHazardMarkers();
@@ -270,6 +272,21 @@ class _RunsScreenState extends State<RunsScreen> {
 
   void _onControllerChanged() {
     if (!mounted) return;
+
+    // FIX: _loadRuns() bails out with "Please sign in before tracking a
+    // run" and does nothing else if the user wasn't authenticated *at the
+    // moment this screen first mounted*. Since this screen now stays
+    // mounted for the app's lifetime, logging in afterwards (very common on
+    // web, which has no persisted session to restore) never re-triggered
+    // it — the tab stayed stuck on the sign-in message forever. Reload
+    // whenever the auth state actually flips.
+    final isAuthenticated = widget.controller.isAuthenticated;
+    if (isAuthenticated != _lastSeenAuthState) {
+      _lastSeenAuthState = isAuthenticated;
+      _loadRuns();
+      _loadHazardMarkers();
+      return;
+    }
 
     final pendingRoute = widget.controller.takePendingRunRoute();
     if (pendingRoute != null && _activeRun == null) {

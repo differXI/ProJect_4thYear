@@ -377,6 +377,52 @@ void main() {
       expect(find.text('Test Loop'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'signing in after the Runs tab already mounted loads it instead of '
+    'leaving it stuck on the sign-in message',
+    (tester) async {
+      // Regression test: _loadRuns() bailed out with "Please sign in before
+      // tracking a run" if the user wasn't authenticated *at the moment
+      // this screen first mounted*, and did nothing else. Since this screen
+      // now stays mounted for the app's lifetime, logging in afterwards
+      // (the normal case on web, which has no persisted session to restore
+      // on launch) never re-triggered it — the tab stayed stuck on the
+      // sign-in message forever, even after a successful login.
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = _FakeAuthController(startAuthenticated: false);
+      await tester.pumpWidget(_TabbedTestHarness(controller: controller));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final runsScreenFinder = find.byType(RunsScreen);
+      expect(
+        find.descendant(
+          of: runsScreenFinder,
+          matching: find.text('Please sign in before tracking a run.'),
+        ),
+        findsOneWidget,
+      );
+
+      controller.simulateLogin();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      expect(
+        find.descendant(
+          of: runsScreenFinder,
+          matching: find.text('Please sign in before tracking a run.'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: runsScreenFinder, matching: find.text('Start run')),
+        findsOneWidget,
+      );
+    },
+  );
 }
 
 class _TabbedTestHarness extends StatefulWidget {
@@ -425,7 +471,8 @@ class _TabbedTestHarnessState extends State<_TabbedTestHarness> {
 }
 
 class _FakeAuthController extends AuthController {
-  _FakeAuthController({bool startWithActiveRun = false}) {
+  _FakeAuthController({bool startWithActiveRun = false, bool startAuthenticated = true})
+      : _authenticated = startAuthenticated {
     if (startWithActiveRun) {
       _runs.add(RunItem(
         id: _nextRunId++,
@@ -475,8 +522,18 @@ class _FakeAuthController extends AuthController {
     notifyRunsChanged();
   }
 
+  bool _authenticated;
+
   @override
-  bool get isAuthenticated => true;
+  bool get isAuthenticated => _authenticated;
+
+  /// Simulates AuthController.login() succeeding after this screen was
+  /// already mounted (e.g. no persisted session on web, so the user only
+  /// signs in after the app — and this tab — has already loaded).
+  void simulateLogin() {
+    _authenticated = true;
+    notifyListeners();
+  }
 
   @override
   Future<HealthResponse> getHealth() async => const HealthResponse(status: 'ok');

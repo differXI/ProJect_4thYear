@@ -29,11 +29,13 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _isActing = false;
 
   late int _lastSeenRunsVersion;
+  late bool _lastSeenIsAdmin;
 
   @override
   void initState() {
     super.initState();
     _lastSeenRunsVersion = widget.controller.runsVersion;
+    _lastSeenIsAdmin = widget.controller.isAdmin;
     widget.controller.addListener(_onControllerChanged);
     _load();
   }
@@ -46,6 +48,19 @@ class _AdminScreenState extends State<AdminScreen> {
 
   void _onControllerChanged() {
     if (!mounted) return;
+
+    // FIX: _load() bails out immediately unless isAdmin was already true
+    // *at the moment this screen first mounted*. Signing in as an admin
+    // account after that (e.g. on web, which has no persisted session to
+    // restore on launch) never re-triggered it, so the whole dashboard
+    // stayed blank forever even after a successful admin sign-in.
+    final isAdmin = widget.controller.isAdmin;
+    if (isAdmin != _lastSeenIsAdmin) {
+      _lastSeenIsAdmin = isAdmin;
+      _load();
+      return;
+    }
+
     // FIX: this screen stays mounted for the app's lifetime (see the
     // IndexedStack fix in main.dart), so initState()'s one-time load can't
     // pick up routes shared/unshared/created/deleted elsewhere on its own —

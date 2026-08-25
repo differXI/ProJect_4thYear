@@ -37,11 +37,13 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingStats = true;
 
   late int _lastSeenRunsVersion;
+  late bool _lastSeenAuthState;
 
   @override
   void initState() {
     super.initState();
     _lastSeenRunsVersion = widget.controller.runsVersion;
+    _lastSeenAuthState = widget.controller.isAuthenticated;
     widget.controller.addListener(_onControllerChanged);
     _load();
     _loadCommunityRoutes();
@@ -57,6 +59,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onControllerChanged() {
     if (!mounted) return;
+
+    // FIX: _load() only fetches the user's own runs/favorites when
+    // isAuthenticated is true *at that moment* — logging in after this
+    // screen already mounted (e.g. on web, which has no persisted session
+    // to restore on launch) never re-triggered it, so stats stayed empty
+    // forever even after a successful sign-in.
+    final isAuthenticated = widget.controller.isAuthenticated;
+    if (isAuthenticated != _lastSeenAuthState) {
+      _lastSeenAuthState = isAuthenticated;
+      _load();
+      _loadCommunityRoutes();
+      return;
+    }
+
     // FIX: this screen now stays mounted for the app's lifetime (see the
     // IndexedStack fix in main.dart), so initState()'s one-time load can no
     // longer pick up run counts that changed after starting/finishing a run
