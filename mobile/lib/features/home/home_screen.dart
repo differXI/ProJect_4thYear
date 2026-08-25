@@ -36,18 +36,36 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingCommunity = false;
   bool _isLoadingStats = true;
 
+  late int _lastSeenRunsVersion;
+
   @override
   void initState() {
     super.initState();
+    _lastSeenRunsVersion = widget.controller.runsVersion;
+    widget.controller.addListener(_onControllerChanged);
     _load();
     _loadCommunityRoutes();
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
     _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    // FIX: this screen now stays mounted for the app's lifetime (see the
+    // IndexedStack fix in main.dart), so initState()'s one-time load can no
+    // longer pick up run counts that changed after starting/finishing a run
+    // on the Runs tab. Refresh when notifyRunsChanged() bumps the version.
+    if (widget.controller.runsVersion != _lastSeenRunsVersion) {
+      _lastSeenRunsVersion = widget.controller.runsVersion;
+      _load();
+      _loadCommunityRoutes();
+    }
   }
 
   Future<void> _load() async {

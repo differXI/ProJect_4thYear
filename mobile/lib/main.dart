@@ -86,7 +86,7 @@ class _RunnaAppState extends State<RunnaApp> {
     final pages = <Widget>[
       HomeScreen(controller: _controller, onNavigate: _navigateToTab),
       RoutesScreen(controller: _controller, onNavigate: _navigateToTab),
-      RunsScreen(controller: _controller),
+      RunsScreen(controller: _controller, isActive: _currentIndex == 2),
       HazardsScreen(controller: _controller),
       AuthScreen(controller: _controller),
       if (_controller.isAdmin) AdminScreen(controller: _controller),
@@ -114,7 +114,12 @@ class _RunnaAppState extends State<RunnaApp> {
               ),
           ],
         ),
-        body: SafeArea(child: pages[safeIndex]),
+        body: SafeArea(
+          child: IndexedStack(
+            index: safeIndex,
+            children: pages,
+          ),
+        ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: safeIndex,
           onDestinationSelected: (index) => setState(() => _currentIndex = index),

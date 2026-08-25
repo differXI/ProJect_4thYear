@@ -55,9 +55,15 @@ String _formatRunPace(double? paceMinPerKm) {
 // ─────────────────────────────────────────────────────────
 
 class RunsScreen extends StatefulWidget {
-  const RunsScreen({super.key, required this.controller});
+  const RunsScreen({super.key, required this.controller, this.isActive = true});
 
   final AuthController controller;
+
+  /// Whether this is the currently-selected bottom-nav tab. RunsScreen stays
+  /// mounted permanently (see the IndexedStack fix in main.dart) so it can
+  /// keep tracking in the background, which means it must be told when the
+  /// user has navigated away instead of relying on dispose()/initState().
+  final bool isActive;
 
   @override
   State<RunsScreen> createState() => _RunsScreenState();
@@ -89,6 +95,7 @@ class _RunsScreenState extends State<RunsScreen> {
   String? _message;
   bool _isLoading = false;
   bool _isTracking = false;
+  bool _isPinPlacementMode = false;
 
   int _secondsElapsed = 0;
   double _trackedDistanceKm = 0.0;
@@ -191,15 +198,57 @@ class _RunsScreenState extends State<RunsScreen> {
   @override
   void initState() {
     super.initState();
+    // FIX: RunsScreen now stays mounted for the app's lifetime (see the
+    // IndexedStack fix in main.dart), so initState() only ever runs once.
+    // "Run" buttons on Home/Routes queue a route via setPendingRunRoute()
+    // then switch to this tab — without this listener that route would
+    // never be picked up after the very first app launch, since _loadRuns()
+    // (which used to catch it via initState on every tab switch) no longer
+    // re-fires.
+    widget.controller.addListener(_onControllerChanged);
     _loadRuns();
     _loadHazardMarkers();
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
     _positionSubscription?.cancel();
     _runningTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant RunsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // FIX: the post-run summary used to be wiped out for free whenever the
+    // user left this tab, because leaving used to destroy RunsScreen
+    // entirely. Now that it stays mounted, leaving via the bottom nav (i.e.
+    // any way other than the summary's own back button) left _justFinishedRun
+    // set forever — so the next time this tab became visible (including via
+    // the "Run" button from a community/favorite route) it rendered the
+    // map-less summary screen instead of the live tracking view. Clear it
+    // the moment the tab stops being active instead.
+    if (oldWidget.isActive && !widget.isActive && _justFinishedRun != null) {
+      setState(() {
+        _justFinishedRun = null;
+        _trackedPoints = const [];
+        _trackedDistanceKm = 0.0;
+      });
+    }
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    final pendingRoute = widget.controller.takePendingRunRoute();
+    if (pendingRoute == null || _activeRun != null) return;
+    setState(() {
+      _selectedRoute = pendingRoute;
+      if (!_manualRoutes.any((r) => r.id == pendingRoute.id)) {
+        _manualRoutes = [pendingRoute, ..._manualRoutes];
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _fitSelectedRouteOnMap());
   }
 
   // ── data loading ─────────────────────────
@@ -256,17 +305,28 @@ class _RunsScreenState extends State<RunsScreen> {
         }
       }
 
+      final currentSelection = _selectedRoute;
+      final currentSelectionStillValid = currentSelection != null &&
+          routesList.any((r) => r.id == currentSelection.id);
+
       setState(() {
         _runs = runs;
         _manualRoutes = routesList;
         _activeRun = activeRun;
-        // Prioritize: active run > selected from navigation > current selected > first route
+        // Prioritize: active run > selected from navigation > already-selected (if still valid) > first route
         if (activeRun != null && activeRun.manualRouteId != null) {
           _selectedRoute = routesList.cast<ManualRouteItem?>().firstWhere(
               (r) => r?.id == activeRun.manualRouteId,
               orElse: () => _pickSelectedRoute(routesList, null));
         } else if (selectedRoute != null) {
           _selectedRoute = selectedRoute;
+        } else if (currentSelectionStillValid) {
+          // FIX: _loadRuns() and _onControllerChanged (which reacts to
+          // setPendingRunRoute() from Home/Routes' "Run" button) both try to
+          // consume the same one-shot pendingRunRoute. If _onControllerChanged
+          // wins that race and already applied it, _loadRuns() must not
+          // clobber that selection back to the first route once it resolves.
+          _selectedRoute = currentSelection;
         } else {
           _selectedRoute = _pickSelectedRoute(routesList, activeRun);
         }
@@ -477,13 +537,17 @@ class _RunsScreenState extends State<RunsScreen> {
         notes: 'Following manual route: ${route.name}',
       );
       if (!mounted) return;
-      setState(() => _activeRun = run);
-      // Start the stream FIRST, then reload the run list in the background.
+      setState(() {
+        _activeRun = run;
+        // FIX: merge the freshly-started run into the local list instead of
+        // re-fetching from the server. A background _loadRuns() call here
+        // could race with the backend and read the run back as not-yet-active,
+        // wiping _activeRun and making tracking look stuck/reset to 0 even
+        // though the GPS stream is running fine.
+        _runs = [run, ..._runs.where((r) => r.id != run.id)];
+      });
+      widget.controller.notifyRunsChanged();
       await _startLocationStream();
-      // FIX: reload silently without awaiting — prevents _loadRuns from
-      // calling _resumeActiveRun (which would set wasTracking=false and
-      // reset the stream).
-      _loadRuns();
     } catch (error) {
       if (!mounted) return;
       setState(() => _message = '$error');
@@ -524,6 +588,7 @@ class _RunsScreenState extends State<RunsScreen> {
         _headingDeg = null;
         _justFinishedRun = finished;
       });
+      widget.controller.notifyRunsChanged();
       _loadRuns();
     } catch (error) {
       if (!mounted) return;
@@ -656,6 +721,63 @@ class _RunsScreenState extends State<RunsScreen> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  void _toggleHazardPinPlacement() {
+    if (!widget.controller.isAuthenticated) {
+      setState(() => _message = 'Sign in to report hazards.');
+      return;
+    }
+    setState(() => _isPinPlacementMode = !_isPinPlacementMode);
+  }
+
+  void _handleHazardMapTap(TapPosition _, LatLng point) {
+    if (!_isPinPlacementMode) return;
+    setState(() {
+      _isPinPlacementMode = false;
+      _message = null;
+    });
+    _openHazardReportSheet(point);
+  }
+
+  Future<void> _submitHazardPin({
+    required LatLng point,
+    required String category,
+    required int severity,
+    String? note,
+  }) async {
+    await widget.controller.createMarker(
+      markerType: category,
+      severity: severity,
+      lat: point.latitude,
+      lng: point.longitude,
+      note: note,
+    );
+    await _loadHazardMarkers();
+  }
+
+  void _openHazardReportSheet(LatLng point) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+        ),
+        child: _HazardReportSheet(
+          onSubmit: ({required category, required severity, note}) =>
+              _submitHazardPin(
+            point: point,
+            category: category,
+            severity: severity,
+            note: note,
+          ),
         ),
       ),
     );
@@ -872,6 +994,7 @@ class _RunsScreenState extends State<RunsScreen> {
                 options: MapOptions(
                   initialCenter: _defaultCenter,
                   initialZoom: 14,
+                  onTap: _handleHazardMapTap,
                   // FIX: set _mapReady = true once FlutterMap fires its onMapReady
                   // callback so _safeMapMove knows it is safe to call move().
                   onMapReady: () {
@@ -959,6 +1082,52 @@ class _RunsScreenState extends State<RunsScreen> {
                   child: const Icon(Icons.my_location),
                 ),
               ),
+              if (_isPinPlacementMode)
+                Positioned(
+                  left: 12,
+                  right: 64,
+                  top: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.touch_app,
+                            size: 18, color: RunnaColors.primaryDark),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Tap a spot on the map to place your hazard pin',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: RunnaColors.primaryDark,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _toggleHazardPinPlacement,
+                          child: const Padding(
+                            padding: EdgeInsets.only(left: 6),
+                            child: Icon(Icons.close,
+                                size: 18, color: RunnaColors.muted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1059,6 +1228,10 @@ class _RunsScreenState extends State<RunsScreen> {
                   ),
                   FilledButton(
                     onPressed: canStartRun ? _startRun : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: RunnaColors.warning,
+                      foregroundColor: Colors.black87,
+                    ),
                     child: const Text('Start run'),
                   ),
                   FilledButton.tonal(
@@ -1072,6 +1245,21 @@ class _RunsScreenState extends State<RunsScreen> {
                         ? null
                         : _startLocationStream,
                     child: const Text('Resume GPS'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: _isLoading ? null : _toggleHazardPinPlacement,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _isPinPlacementMode
+                          ? RunnaColors.muted
+                          : RunnaColors.primaryDark,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: Icon(_isPinPlacementMode
+                        ? Icons.close
+                        : Icons.add_location_alt),
+                    label: Text(_isPinPlacementMode
+                        ? 'Cancel pin placement'
+                        : 'Add hazard pin'),
                   ),
                 ],
               ),
@@ -1180,6 +1368,171 @@ class _DirectionalLocationPin extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _HazardReportSheet extends StatefulWidget {
+  const _HazardReportSheet({required this.onSubmit});
+
+  final Future<void> Function({
+    required String category,
+    required int severity,
+    String? note,
+  }) onSubmit;
+
+  @override
+  State<_HazardReportSheet> createState() => _HazardReportSheetState();
+}
+
+class _HazardReportSheetState extends State<_HazardReportSheet> {
+  final _noteController = TextEditingController();
+  String _category = 'construction';
+  int _severity = 3;
+  bool _isLoading = false;
+  String? _error;
+
+  static const _categories = [
+    'construction',
+    'road_closure',
+    'animals',
+    'obstacle',
+    'accident',
+    'dark_area',
+    'unsafe_crossing',
+    'other',
+  ];
+
+  static Color _severityColor(int severity) {
+    switch (severity) {
+      case 5:
+        return const Color(0xFFC62828);
+      case 4:
+        return const Color(0xFFE53935);
+      case 3:
+        return const Color(0xFFFFA726);
+      case 2:
+        return const Color(0xFFFFCA28);
+      default:
+        return const Color(0xFF66BB6A);
+    }
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit(
+        category: _category,
+        severity: _severity,
+        note: _noteController.text.trim().isEmpty
+            ? null
+            : _noteController.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = '$error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(RunnaSpacing.page),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Report a hazard',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _category,
+            decoration: const InputDecoration(labelText: 'Category'),
+            items: _categories
+                .map((item) => DropdownMenuItem(
+                      value: item,
+                      child: Text(item.replaceAll('_', ' ').toUpperCase()),
+                    ))
+                .toList(),
+            onChanged: _isLoading
+                ? null
+                : (value) => setState(() => _category = value ?? 'other'),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Severity: $_severity',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                ['Low', 'Medium', 'High', 'Very High', 'Critical']
+                    [_severity - 1],
+                style: TextStyle(
+                  color: _severityColor(_severity),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: _severity.toDouble(),
+            min: 1,
+            max: 5,
+            divisions: 4,
+            label: '$_severity',
+            onChanged: _isLoading
+                ? null
+                : (value) => setState(() => _severity = value.round()),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _noteController,
+            enabled: !_isLoading,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Description (optional)',
+              hintText: 'e.g., Pothole on left side near tree',
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: Color(0xFFC62828))),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _isLoading ? null : _submit,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Report hazard'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -45,6 +45,19 @@ class AuthController extends ChangeNotifier {
     return route;
   }
 
+  int _runsVersion = 0;
+  int get runsVersion => _runsVersion;
+
+  /// Bumps [runsVersion] and notifies listeners. Called when a run starts or
+  /// finishes so screens displaying a route's run count (Home's community
+  /// routes, Routes' favorites) know their cached counts may be stale and
+  /// can refresh — those screens no longer get recreated on tab switches, so
+  /// they can't just re-fetch in initState() anymore.
+  void notifyRunsChanged() {
+    _runsVersion++;
+    notifyListeners();
+  }
+
   /// Attempts to restore a previous session from the persistent storage pool.
   Future<void> restoreSession() async {
     try {

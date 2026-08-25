@@ -29,8 +29,14 @@ class AdminService:
 
     def get_stats(self) -> dict:
         """Aggregates high-level system monitoring metrics across application models."""
-        total_users = self.db.scalar(select(func.count(User.id))) or 0
-        active_users = self.db.scalar(select(func.count(User.id)).where(User.is_active.is_(True))) or 0
+        total_users = self.db.scalar(
+            select(func.count(User.id)).join(Role, User.role_id == Role.id).where(Role.name != "admin")
+        ) or 0
+        active_users = self.db.scalar(
+            select(func.count(User.id))
+            .join(Role, User.role_id == Role.id)
+            .where(Role.name != "admin", User.is_active.is_(True))
+        ) or 0
         total_runs = self.db.scalar(select(func.count(Run.id))) or 0
         finished_runs = self.db.scalar(select(func.count(Run.id)).where(Run.status == "finished")) or 0
         active_pins = self.db.scalar(
