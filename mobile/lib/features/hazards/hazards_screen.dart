@@ -40,16 +40,36 @@ class _HazardsScreenState extends State<HazardsScreen> {
     'other',
   ];
 
+  late bool _lastSeenAuthState;
+
   @override
   void initState() {
     super.initState();
+    _lastSeenAuthState = widget.controller.isAuthenticated;
+    widget.controller.addListener(_onControllerChanged);
     _load();
   }
 
   @override
   void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
     _noteController.dispose();
     super.dispose();
+  }
+
+  void _onControllerChanged() {
+    if (!mounted) return;
+    // FIX: this screen now stays mounted for the app's lifetime (see the
+    // IndexedStack fix in main.dart), so initState()'s one-time load only
+    // ever fetches "my pins" when isAuthenticated is true *at that moment*.
+    // Logging in afterwards (e.g. on web, which has no persisted session to
+    // restore on launch) never re-triggered it, so "My pins" stayed empty
+    // forever even after a successful sign-in.
+    final isAuthenticated = widget.controller.isAuthenticated;
+    if (isAuthenticated != _lastSeenAuthState) {
+      _lastSeenAuthState = isAuthenticated;
+      _load();
+    }
   }
 
   Future<void> _load() async {
