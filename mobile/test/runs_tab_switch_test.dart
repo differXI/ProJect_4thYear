@@ -22,6 +22,7 @@ import 'package:runna_mobile/features/hazards/hazards_screen.dart';
 import 'package:runna_mobile/features/home/home_screen.dart';
 import 'package:runna_mobile/features/routes/routes_screen.dart';
 import 'package:runna_mobile/features/runs/runs_screen.dart';
+import 'package:runna_mobile/widgets/route_result_card.dart';
 
 void main() {
   testWidgets(
@@ -423,6 +424,108 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'favoriting a community route on Home updates the favorite count on '
+    'the already-mounted Routes tab',
+    (tester) async {
+      // Regression test: reported twice — favoriting a route from Home's
+      // community list didn't update the heart/favorite count shown on the
+      // Routes tab. Verifies the actual user-visible symptom end-to-end
+      // (tap the heart on Home, check the badge on Routes) rather than just
+      // the notifyRunsChanged() plumbing in isolation.
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = _FakeAuthController();
+      await tester.pumpWidget(_TabbedTestHarness(controller: controller));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Start on Home (tab_0) — IndexedStack doesn't hit-test inactive tabs.
+      await tester.tap(find.byKey(const ValueKey('tab_0')));
+      await tester.pumpAndSettle();
+
+      final heartFinder = _heartIconOnCard(tester, 'Community Loop');
+      await tester.ensureVisible(heartFinder);
+      expect(heartFinder, findsOneWidget, reason: 'Community Loop should start unfavorited');
+
+      await tester.tap(heartFinder);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Switch to Routes (tab_1) and check the favorite count badge.
+      await tester.tap(find.byKey(const ValueKey('tab_1')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final routesScreenFinder = find.byType(RoutesScreen);
+      expect(
+        find.descendant(of: routesScreenFinder, matching: find.text('1')),
+        findsOneWidget,
+        reason: 'Routes tab favorite-count badge should show 1 after favoriting from Home',
+      );
+    },
+  );
+
+  testWidgets(
+    'favoriting several community routes on Home in a row all show up on '
+    "Routes' favorite count",
+    (tester) async {
+      // Regression test: the user reported favoriting several routes in a
+      // row ("กดไปตั้งเยอะ" — pressed a lot of times) and Routes' badge
+      // still not reflecting them, even after confirming a single favorite
+      // syncs correctly. This exercises multiple favorites back-to-back —
+      // including one whose id/name overlaps with a route the same user
+      // also owns/saved, matching the real report's screenshots.
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final controller = _FakeAuthController();
+      await tester.pumpWidget(_TabbedTestHarness(controller: controller));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const ValueKey('tab_0')));
+      await tester.pumpAndSettle();
+
+      for (final name in ['ok', 'Route 2', 'maridian', 'mem']) {
+        final heartFinder = _heartIconOnCard(tester, name);
+        await tester.ensureVisible(heartFinder);
+        await tester.tap(heartFinder);
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const ValueKey('tab_1')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final routesScreenFinder = find.byType(RoutesScreen);
+      expect(
+        find.descendant(of: routesScreenFinder, matching: find.text('4')),
+        findsOneWidget,
+        reason: "Routes tab favorite-count badge should show 4 after favoriting 4 routes from Home",
+      );
+    },
+  );
+}
+
+/// Finds the favorite-heart icon on the RouteResultCard whose title matches
+/// [routeName], scoped so it's unambiguous when multiple route cards are on
+/// screen at once.
+Finder _heartIconOnCard(WidgetTester tester, String routeName) {
+  final cardFinder = find.ancestor(
+    of: find.text(routeName),
+    matching: find.byType(RouteResultCard),
+  );
+  return find.descendant(
+    of: cardFinder,
+    matching: find.byWidgetPredicate(
+      (widget) => widget is Icon && (widget.icon == Icons.favorite || widget.icon == Icons.favorite_border),
+    ),
+  );
 }
 
 class _TabbedTestHarness extends StatefulWidget {
@@ -547,8 +650,83 @@ class _FakeAuthController extends AuthController {
     return List.unmodifiable(_manualRoutes);
   }
 
+  final ManualRouteItem _communityRoute = const ManualRouteItem(
+    id: 50,
+    userId: 999, // not the signed-in user — a community route
+    name: 'Community Loop',
+    pathJson: '[{"lat":18.79,"lng":98.97},{"lat":18.80,"lng":98.98}]',
+    distanceKm: 5.0,
+    isShared: true,
+    runCount: 1,
+  );
+
+  // Multiple community routes, matching a real "favorite several in a row"
+  // session (reported as "กดไปตั้งเยอะ" — pressed a lot of times).
+  late final List<ManualRouteItem> _communityRoutePool = [
+    _communityRoute,
+    ManualRouteItem(
+      id: 51,
+      userId: 999,
+      name: 'ok',
+      pathJson: '[{"lat":18.79,"lng":98.97},{"lat":18.80,"lng":98.98}]',
+      distanceKm: 0.4,
+      isShared: true,
+      runCount: 3,
+    ),
+    ManualRouteItem(
+      id: 52,
+      userId: 999,
+      name: 'Route 2',
+      pathJson: _communityRoute.pathJson,
+      distanceKm: 0.2,
+      isShared: true,
+      runCount: 0,
+    ),
+    ManualRouteItem(
+      id: 53,
+      userId: 999,
+      name: 'maridian',
+      pathJson: _communityRoute.pathJson,
+      distanceKm: 0.9,
+      isShared: true,
+      runCount: 0,
+    ),
+    ManualRouteItem(
+      id: 54,
+      userId: 999,
+      name: 'mem',
+      pathJson: _communityRoute.pathJson,
+      distanceKm: 1.1,
+      isShared: true,
+      runCount: 0,
+    ),
+  ];
+
+  final Set<int> _favoritedRouteIds = <int>{};
+  int getFavoriteRoutesFetchCount = 0;
+
   @override
-  Future<List<ManualRouteItem>> getFavoriteRoutes() async => const [];
+  Future<List<ManualRouteItem>> getFavoriteRoutes() async {
+    getFavoriteRoutesFetchCount++;
+    return _communityRoutePool
+        .where((r) => _favoritedRouteIds.contains(r.id))
+        .map((r) => r.copyWith(isFavorited: true))
+        .toList();
+  }
+
+  @override
+  Future<ManualRouteItem> favoriteManualRoute({
+    required int routeId,
+    bool favorite = true,
+  }) async {
+    if (favorite) {
+      _favoritedRouteIds.add(routeId);
+    } else {
+      _favoritedRouteIds.remove(routeId);
+    }
+    final route = _communityRoutePool.firstWhere((r) => r.id == routeId);
+    return route.copyWith(isFavorited: favorite);
+  }
 
   @override
   Future<List<ManualRouteItem>> getCommunityRoutes({
@@ -557,7 +735,9 @@ class _FakeAuthController extends AuthController {
     String sort = 'newest',
   }) async {
     communityRoutesFetchCount++;
-    return const [];
+    return _communityRoutePool
+        .map((r) => r.copyWith(isFavorited: _favoritedRouteIds.contains(r.id)))
+        .toList();
   }
 
   @override

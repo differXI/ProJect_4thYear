@@ -72,6 +72,19 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  // FIX: notifyRunsChanged() broadcasts to every screen listening on the
+  // controller, including this one — so calling it plain caused this
+  // screen's own _onControllerChanged to treat its own action as an
+  // external change and reload, which visibly reset scroll position/state
+  // right after an action whose result this screen already applied itself.
+  // Pre-marking the version this call is about to produce as "already
+  // seen" skips that redundant self-reload while still letting every other
+  // screen react normally.
+  void _notifyRunsChangedWithoutSelfReload() {
+    _lastSeenRunsVersion = widget.controller.runsVersion + 1;
+    widget.controller.notifyRunsChanged();
+  }
+
   Future<void> _load() async {
     if (!widget.controller.isAdmin) return;
     setState(() {
@@ -185,7 +198,7 @@ class _AdminScreenState extends State<AdminScreen> {
       // routes and the route owner's own Saved routes list (if the same
       // session) never got told to refresh, so they kept showing the route
       // as still published/still present.
-      widget.controller.notifyRunsChanged();
+      _notifyRunsChangedWithoutSelfReload();
       await _loadRoutes();
     } catch (error) {
       if (!mounted) return;
@@ -227,7 +240,7 @@ class _AdminScreenState extends State<AdminScreen> {
       // same session) still sees it in their own Saved routes list, and
       // Home's community list still shows it, even though it's gone from
       // the database.
-      widget.controller.notifyRunsChanged();
+      _notifyRunsChangedWithoutSelfReload();
       await _loadRoutes();
     } catch (error) {
       if (!mounted) return;
