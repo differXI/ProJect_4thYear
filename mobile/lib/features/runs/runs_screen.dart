@@ -310,6 +310,19 @@ class _RunsScreenState extends State<RunsScreen> {
     }
   }
 
+  // FIX: notifyRunsChanged() broadcasts to every screen listening on the
+  // controller, including this one — so calling it plain caused this
+  // screen's own _onControllerChanged to treat its own action as an
+  // external change and reload, which visibly reset scroll position/state
+  // right after an action whose result this screen already applied itself.
+  // Pre-marking the version this call is about to produce as "already
+  // seen" skips that redundant self-reload while still letting every other
+  // screen react normally.
+  void _notifyRunsChangedWithoutSelfReload() {
+    _lastSeenRunsVersion = widget.controller.runsVersion + 1;
+    widget.controller.notifyRunsChanged();
+  }
+
   // ── data loading ─────────────────────────
 
   Future<void> _loadHazardMarkers() async {
@@ -631,7 +644,7 @@ class _RunsScreenState extends State<RunsScreen> {
         // though the GPS stream is running fine.
         _runs = [run, ..._runs.where((r) => r.id != run.id)];
       });
-      widget.controller.notifyRunsChanged();
+      _notifyRunsChangedWithoutSelfReload();
       await _startLocationStream();
     } catch (error) {
       if (!mounted) return;
@@ -673,7 +686,7 @@ class _RunsScreenState extends State<RunsScreen> {
         _headingDeg = null;
         _justFinishedRun = finished;
       });
-      widget.controller.notifyRunsChanged();
+      _notifyRunsChangedWithoutSelfReload();
       _loadRuns();
     } catch (error) {
       if (!mounted) return;
@@ -840,7 +853,10 @@ class _RunsScreenState extends State<RunsScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    // Solid green rather than a white outlined button, so it
+                    // matches the Disagree button beside it (and the same
+                    // pair on the Hazards screen).
+                    child: FilledButton(
                       onPressed: _isLoading ? null : () => _voteOnHazardMarker(marker, true),
                       child: const Text('Confirm'),
                     ),
