@@ -21,9 +21,11 @@ class Settings(BaseSettings):
     smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
     smtp_from_email: str = Field(default="", alias="SMTP_FROM_EMAIL")
     smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
-    password_reset_email_backend: Literal["disabled", "smtp"] = Field(
+    password_reset_email_backend: Literal["disabled", "smtp", "brevo"] = Field(
         default="disabled", alias="PASSWORD_RESET_EMAIL_BACKEND"
     )
+    # HTTPS email API, for hosts that block outbound SMTP ports (e.g. Render free plan).
+    brevo_api_key: str = Field(default="", alias="BREVO_API_KEY")
     password_reset_code_expire_minutes: int = Field(
         default=10, alias="PASSWORD_RESET_CODE_EXPIRE_MINUTES"
     )
